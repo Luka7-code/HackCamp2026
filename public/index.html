@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Warehouse WMS</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>📦 Warehouse WMS</h1>
+      <div class="who">
+        <input id="employee" value="alex" placeholder="Employee name" />
+        <select id="role">
+          <option value="worker">Worker</option>
+          <option value="manager">Manager</option>
+        </select>
+      </div>
+    </header>
+
+    <nav id="tabs">
+      <button data-tab="scan" class="active">Scan</button>
+      <button data-tab="items">Items</button>
+      <button data-tab="register" class="mgr">Register item</button>
+      <button data-tab="audit" class="mgr">Audit history</button>
+    </nav>
+
+    <div id="toast"></div>
+
+    <main>
+      <!-- Always visible: warehouse map -->
+      <section class="card">
+        <h2>Warehouse map</h2>
+        <div id="map"></div>
+        <p class="hint">Highlighted shelf = where the scanned item is.</p>
+      </section>
+
+      <!-- SCAN TAB -->
+      <section id="tab-scan" class="card tab">
+        <h2>Scan</h2>
+        <div id="reader"></div>
+        <div class="row">
+          <button id="startBtn">Start camera</button>
+          <button id="stopBtn" class="secondary" disabled>Stop</button>
+        </div>
+        <div class="row">
+          <input id="manual" placeholder="Or type a barcode (SKU-100001 or LOC-A-01)" />
+          <button id="manualBtn">Look up</button>
+        </div>
+        <div id="result"></div>
+      </section>
+
+      <!-- ITEMS TAB -->
+      <section id="tab-items" class="card tab" hidden>
+        <h2>Items</h2>
+        <input id="search" placeholder="Search items by name..." />
+        <div id="itemList"></div>
+      </section>
+
+      <!-- REGISTER TAB (manager) -->
+      <section id="tab-register" class="card tab" hidden>
+        <h2>Register new item</h2>
+        <input id="newName" placeholder="Item name" />
+        <input id="newDesc" placeholder="Description" />
+        <select id="newLoc"></select>
+        <button id="registerBtn">Register item</button>
+        <div id="registered"></div>
+      </section>
+
+      <!-- AUDIT TAB (manager) -->
+      <section id="tab-audit" class="card tab" hidden>
+        <h2>Audit history</h2>
+        <div class="row">
+          <input id="auditSku" placeholder="Filter by SKU (optional)" />
+          <button id="auditBtn">Load</button>
+        </div>
+        <div class="scroll"><table id="auditTable"></table></div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

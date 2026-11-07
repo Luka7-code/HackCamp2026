@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Print labels</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 20px;
+      }
+      h2 {
+        margin: 24px 0 8px;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .label {
+        width: 260px;
+        border: 1px dashed #999;
+        padding: 10px;
+        text-align: center;
+        break-inside: avoid;
+      }
+      .label svg {
+        width: 100%;
+        height: auto;
+      }
+      .label strong {
+        display: block;
+        margin-top: 4px;
+      }
+      .label small {
+        color: #555;
+      }
+      button {
+        padding: 8px 14px;
+        font-size: 1rem;
+      }
+      @media print {
+        button,
+        .noprint {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button onclick="window.print()">🖨 Print</button>
+    <p class="noprint">Tip: add <code>?sku=SKU-123456</code> to the URL to print just one item.</p>
+
+    <h2>Shelf labels</h2>
+    <div id="shelves" class="grid"></div>
+
+    <h2>Item labels</h2>
+    <div id="items" class="grid"></div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function makeLabel(container, code, title) {
+        const div = document.createElement("div");
+        div.className = "label";
+        div.innerHTML = `<strong>${title}</strong><svg></svg>`;
+        container.appendChild(div);
+        JsBarcode(div.querySelector("svg"), code, {
+          format: "CODE128",
+          width: 3, // bar thickness
+          height: 80,
+          margin: 10, // quiet zone: required for reliable scanning
+          displayValue: true,
+          fontSize: 16,
+        });
+      }
+
+      async function init() {
+        const only = new URLSearchParams(location.search).get("sku");
+        const locs = await (await fetch("/api/locations")).json();
+        const items = await (await fetch("/api/items")).json();
+
+        if (!only) locs.forEach((l) => makeLabel($("shelves"), l.barcode, l.label));
+        items.filter((i) => !only || i.sku_id === only).forEach((i) => makeLabel($("items"), i.barcode, i.name));
+      }
+      init();
+    </script>
+  </body>
+</html>
