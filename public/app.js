@@ -35,6 +35,7 @@ function applyRole() {
   if ($("role").value === "worker" && active && active.classList.contains("mgr")) showTab("scan");
 }
 function showTab(name) {
+  if (name !== "scan") stopCamera(); // don't leave the iPhone camera running in the background
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "items") loadItems();
@@ -136,24 +137,118 @@ async function setStatus(barcode, status, location) {
   }
 }
 
-$("startBtn").addEventListener("click", async () => {
-  try {
-    scanner = new Html5Qrcode("reader", {
-      formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
-      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    });
-    await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 320, height: 120 } }, handleCode);
-    $("startBtn").disabled = true;
-    $("stopBtn").disabled = false;
-  } catch (err) {
-    toast("Camera error: " + err, true);
+// ---------- Camera ----------
+const HTTPS_HINT =
+  "Camera needs HTTPS on a phone. Open this app over https:// (for example a cloudflared or ngrok tunnel) instead of a plain http:// address.";
+
+let startingCamera = false;
+
+// iOS Safari only exposes getUserMedia in a secure context, so check before
+// touching the library and explain the fix instead of failing cryptically.
+function cameraBlockedReason() {
+  if (!window.isSecureContext) return HTTPS_HINT;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return HTTPS_HINT;
+  return "";
+}
+
+function describeCameraError(err) {
+  switch (err && (err.name || err.code)) {
+    case "NotAllowedError":
+    case "PermissionDeniedError":
+      return "Camera permission denied. On iPhone: Settings > Safari > Camera > Allow, then reload.";
+    case "NotFoundError":
+    case "DevicesNotFoundError":
+      return "No camera found on this device.";
+    case "NotReadableError":
+    case "TrackStartError":
+      return "The camera is already in use by another app. Close it and try again.";
+    case "OverconstrainedError":
+      return "No rear camera available on this device.";
+    default:
+      return "Camera error: " + (err && err.message ? err.message : String(err));
   }
-});
-$("stopBtn").addEventListener("click", async () => {
-  if (scanner) await scanner.stop();
+}
+
+// iOS pauses inline video unless these are set explicitly on the element
+function keepVideoInline() {
+  const video = document.querySelector("#reader video");
+  if (!video) return;
+  video.setAttribute("playsinline", "true");
+  video.setAttribute("webkit-playsinline", "true");
+  video.muted = true;
+}
+
+async function startCamera() {
+  if (startingCamera || scanner) return;
+
+  if (typeof Html5Qrcode === "undefined") {
+    toast("Scanner library failed to load. Check your connection and reload.", true);
+    return;
+  }
+
+  const blocked = cameraBlockedReason();
+  if (blocked) {
+    toast(blocked, true);
+    return;
+  }
+
+  startingCamera = true;
+  $("startBtn").disabled = true;
+  try {
+    const config = { fps: 10, qrbox: { width: 320, height: 120 } };
+    let lastError = null;
+
+    // Prefer the rear camera, but fall back to whatever camera exists
+    for (const camera of [{ facingMode: "environment" }, { facingMode: "user" }]) {
+      const instance = new Html5Qrcode("reader", {
+        formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      });
+      try {
+        await instance.start(camera, config, handleCode);
+        scanner = instance;
+        keepVideoInline();
+        return;
+      } catch (err) {
+        lastError = err;
+        try {
+          await instance.clear();
+        } catch {
+          /* nothing to clean up */
+        }
+        if ((err && err.name) !== "OverconstrainedError") break;
+      }
+    }
+    throw lastError;
+  } catch (err) {
+    toast(describeCameraError(err), true);
+  } finally {
+    startingCamera = false;
+    $("startBtn").disabled = !!scanner;
+    $("stopBtn").disabled = !scanner;
+  }
+}
+
+async function stopCamera() {
+  if (!scanner) return;
+  const instance = scanner;
+  scanner = null;
+  try {
+    await instance.stop();
+  } catch {
+    /* already stopped */
+  }
+  try {
+    await instance.clear();
+  } catch {
+    /* nothing to clean up */
+  }
   $("startBtn").disabled = false;
   $("stopBtn").disabled = true;
-});
+}
+
+$("startBtn").addEventListener("click", startCamera);
+$("stopBtn").addEventListener("click", stopCamera);
 $("manualBtn").addEventListener("click", () => handleCode($("manual").value));
 $("manual").addEventListener("keydown", (e) => e.key === "Enter" && handleCode($("manual").value));
 
