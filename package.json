@@ -1,0 +1,27 @@
+{
+  "name": "hackcamp2026",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Luka7-code/HackCamp2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Luka7-code/HackCamp2026/issues"
+  },
+  "homepage": "https://github.com/Luka7-code/HackCamp2026#readme",
+  "dependencies": {
+    "@databricks/sql": "^2.4.0",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-openid-connect": "^3.4.0"
+  }
+}
