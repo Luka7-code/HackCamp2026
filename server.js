@@ -1,8 +1,21 @@
 const express = require("express");
+const { auth } = require("express-openid-connect");
 const { DBSQLClient } = require("@databricks/sql");
 
 const app = express();
 app.use(express.json());
+
+// Auth0 login. authRequired: true protects the pages AND the API.
+app.use(
+  auth({
+    authRequired: true,
+    auth0Logout: true,
+    secret: process.env.SECRET,
+    baseURL: process.env.BASE_URL,
+    clientID: process.env.CLIENT_ID,
+    issuerBaseURL: process.env.ISSUER_BASE_URL,
+  }),
+);
 
 const T = "workspace.wms";
 
@@ -51,16 +64,26 @@ const wrap = (fn) => (req, res) =>
     res.status(500).json({ error: err.message });
   });
 
-// ---------- Role handling (demo-level RBAC) ----------
+// ---------- Role handling (from the verified Auth0 login) ----------
+const MANAGERS = (process.env.MANAGER_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
 app.use("/api", (req, res, next) => {
-  req.role = (req.header("x-role") || "worker").toLowerCase();
-  req.employee = req.header("x-employee") || "unknown";
+  const user = req.oidc.user || {};
+  const email = (user.email || "").toLowerCase();
+  req.role = MANAGERS.includes(email) ? "manager" : "worker";
+  req.employee = email || user.name || "unknown";
   next();
 });
 
+// The frontend calls this to learn who is logged in
+app.get("/api/me", (req, res) => {
+  res.json({ name: req.oidc.user.name || req.employee, email: req.employee, role: req.role });
+});
 const managerOnly = (req, res, next) =>
   req.role === "manager" ? next() : res.status(403).json({ error: "Managers only" });
-
 // ---------- Audit log (append-only: INSERT only) ----------
 function logEvent(req, sku, action, fromLoc, toLoc) {
   return query(
@@ -256,8 +279,10 @@ app.get(
   }),
 );
 
-// Serve the frontend (keep this LAST)
-app.use(express.static("public"));
+const path = require("path");
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/src", express.static(path.join(__dirname, "public", "src")));
+app.use(express.static(path.join(__dirname, "public", "html")));
 
 const port = process.env.PORT || 8000;
 app.listen(port, () => console.log(`Running on http://localhost:${port}`));

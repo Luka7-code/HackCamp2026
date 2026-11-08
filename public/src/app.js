@@ -4,16 +4,13 @@ let items = [];
 let scanner = null;
 let lastCode = "";
 let lastTime = 0;
+let currentRole = "worker";
 
 // ---------- API helper: sends role + employee on every request ----------
 async function api(path, options = {}) {
   const res = await fetch(path, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "x-role": $("role").value,
-      "x-employee": $("employee").value.trim() || "unknown",
-    },
+    headers: { "Content-Type": "application/json" },
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Request failed");
@@ -29,10 +26,7 @@ function toast(msg, isError = false) {
 
 // ---------- Role + tabs ----------
 function applyRole() {
-  document.body.className = $("role").value;
-  // If a manager-only tab is open when switching to worker, go back to Scan
-  const active = document.querySelector("#tabs button.active");
-  if ($("role").value === "worker" && active && active.classList.contains("mgr")) showTab("scan");
+  document.body.className = currentRole;
 }
 function showTab(name) {
   if (name !== "scan") stopCamera(); // don't leave the iPhone camera running in the background
@@ -41,7 +35,6 @@ function showTab(name) {
   if (name === "items") loadItems();
   if (name === "audit") loadAudit();
 }
-$("role").addEventListener("change", applyRole);
 document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
 // ---------- Map ----------
@@ -318,5 +311,15 @@ async function loadAudit() {
 $("auditBtn").addEventListener("click", loadAudit);
 
 // ---------- Start ----------
-applyRole();
-loadMap().catch((e) => toast(e.message, true));
+// ---------- Start ----------
+(async () => {
+  try {
+    const me = await api("/api/me");
+    currentRole = me.role;
+    $("whoami").textContent = `${me.email} (${me.role})`;
+    applyRole();
+    await loadMap();
+  } catch (e) {
+    toast(e.message, true);
+  }
+})();
