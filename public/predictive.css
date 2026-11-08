@@ -354,3 +354,83 @@
     height: 250px;
   }
 }
+
+/* index.html hosts the full-screen scanner, so the dashboard overlays it. */
+#tabs {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(11, 18, 32, 0.72);
+  backdrop-filter: blur(8px);
+}
+#tab-predictive:not([hidden]) {
+  position: fixed;
+  top: 56px;
+  right: 0;
+  bottom: 78px;
+  left: 0;
+  z-index: 20;
+  margin: 0;
+  border-radius: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dashboard base styles — the old global stylesheet is no longer loaded. */
+#tab-predictive {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  padding: 16px;
+  color: #1d2433;
+  font-family: system-ui, sans-serif;
+}
+#tab-predictive[hidden] {
+  display: none;
+}
+#tab-predictive h2,
+#tab-predictive h3 {
+  margin: 0;
+}
+#tab-predictive h2 {
+  font-size: 1.05rem;
+}
+#tab-predictive .hint {
+  color: #6b7488;
+  font-size: 0.85rem;
+  margin: 0;
+}
+#tab-predictive .scroll {
+  overflow-x: auto;
+}
+#tab-predictive table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+#tab-predictive th,
+#tab-predictive td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e3e6ee;
+  white-space: nowrap;
+}
+#tab-predictive button.secondary {
+  background: #8a93a6;
+  color: #fff;
+}
+#tabs button {
+  background: #e8ecf5;
+  color: #1d2433;
+  border: 1px solid #c5cad6;
+}
+#tabs button.active {
+  background: #2f6fed;
+  color: #fff;
+  border-color: #2f6fed;
+}
+body.worker .mgr {
+  display: none;
+}

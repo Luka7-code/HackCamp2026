@@ -4,58 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Warehouse WMS</title>
-    <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="../styles/style.css" />
     <link rel="stylesheet" href="/predictive.css" />
     <script type="module" src="/src/nav-bar.js"></script>
   </head>
   <body>
-    <header>
-      <h1>📦 Warehouse WMS</h1>
-      <div class="who">
-        <span id="whoami"></span>
-        <a href="/logout" style="color: #fff">Log out</a>
-      </div>
-    </header>
-
-    <nav id="tabs">
-      <button data-tab="scan" class="active">Scan</button>
-      <button data-tab="items">Items</button>
-      <button data-tab="register" class="mgr">Register item</button>
-      <button data-tab="audit" class="mgr">Audit history</button>
-      <button data-tab="predictive" class="mgr">Predictive AI</button>
-    </nav>
-
     <div id="toast"></div>
     <main>
       <div id="reader"></div>
 
-      <!-- ITEMS TAB -->
-      <section id="tab-items" class="card tab" hidden>
-        <h2>Items</h2>
-        <input id="search" placeholder="Search items by name..." />
-        <div id="itemList"></div>
-      </section>
-
-      <!-- REGISTER TAB (manager) -->
-      <section id="tab-register" class="card tab" hidden>
-        <h2>Register new item</h2>
-        <input id="newName" placeholder="Item name" />
-        <input id="newDesc" placeholder="Description" />
-        <select id="newLoc"></select>
-        <button id="registerBtn">Register item</button>
-        <div id="registered"></div>
-      </section>
-
-      <!-- AUDIT TAB (manager) -->
-      <section id="tab-audit" class="card tab" hidden>
-        <h2>Audit history</h2>
-        <div class="row">
-          <input id="auditSku" placeholder="Filter by SKU (optional)" />
-          <button id="auditBtn">Load</button>
-        </div>
-        <div class="scroll"><table id="auditTable"></table></div>
-      </section>
+      <nav id="tabs">
+        <button data-tab="scan" class="active">Scan</button>
+        <button data-tab="predictive" class="mgr">Predictive AI</button>
+      </nav>
 
       <!-- PREDICTIVE AI TAB (manager) -->
       <section id="tab-predictive" class="card tab" hidden>
@@ -166,10 +127,25 @@
 
       <site-navbar></site-navbar>
     </main>
-
+    <div id="sheet" aria-live="polite">
+      <div class="sheet-handle"></div>
+      <button id="sheetClose" aria-label="Close">✕</button>
+      <div id="sheetBody"></div>
+    </div>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/src/predictive.js"></script>
+    <script>
+      // app.js exposes showTab but no longer renders the tab bar itself.
+      document.querySelectorAll("#tabs button").forEach((button) => {
+        button.addEventListener("click", () => {
+          document
+            .querySelectorAll("#tabs button")
+            .forEach((item) => item.classList.toggle("active", item === button));
+          if (typeof window.showTab === "function") window.showTab(button.dataset.tab);
+        });
+      });
+    </script>
   </body>
 </html>

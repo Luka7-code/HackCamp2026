@@ -1,0 +1,236 @@
+#tab-procurement {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.proc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#tab-procurement td .sub {
+  display: block;
+  color: #6b7488;
+  font-size: 0.76rem;
+  margin-top: 2px;
+}
+
+#procSettings .proc-actions {
+  margin-top: 12px;
+}
+
+#procSettings .proc-actions .hint {
+  margin-left: 8px;
+}
+
+.proc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.proc-filters select,
+.proc-filters input {
+  min-width: 180px;
+}
+
+.proc-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e6ee;
+}
+
+.proc-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7488;
+}
+
+.proc-form input,
+.proc-form select,
+.proc-form textarea {
+  min-width: 160px;
+}
+
+.proc-form textarea {
+  width: 100%;
+  min-width: 320px;
+  font-family: inherit;
+}
+
+.proc-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.proc-setting-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7488;
+}
+
+.proc-setting-grid .proc-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1d2433;
+}
+
+.proc-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.proc-detail-grid > div {
+  background: #f7f8fb;
+  border: 1px solid #e3e6ee;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proc-detail-grid .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7488;
+}
+
+.proc-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.proc-row-actions button {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-height: 30px;
+  white-space: nowrap;
+}
+
+.proc-action-panel {
+  border: 1px solid #c5cad6;
+  box-shadow: 0 6px 20px rgba(29, 36, 51, 0.08);
+}
+
+.proc-email-body {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-width: 420px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f7f8fb;
+  border: 1px solid #e3e6ee;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #3d4657;
+}
+
+.po-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.po-DRAFT {
+  background: #eceff4;
+  color: #3d4657;
+}
+
+.po-PENDING_APPROVAL {
+  background: #fff0cc;
+  color: #8a5a00;
+}
+
+.po-NEEDS_HUMAN_REVIEW {
+  background: #ffe0d1;
+  color: #9b3b12;
+}
+
+.po-APPROVED {
+  background: #e0ecff;
+  color: #1f5bd0;
+}
+
+.po-ORDER_SENT {
+  background: #2f6fed;
+  color: #ffffff;
+}
+
+.po-ORDER_CONFIRMED {
+  background: #d8f3f0;
+  color: #0f6b62;
+}
+
+.po-IN_TRANSIT {
+  background: #fff0cc;
+  color: #8a5a00;
+}
+
+.po-RECEIVED {
+  background: #d9f5e3;
+  color: #17703a;
+}
+
+.po-REJECTED {
+  background: #fde0e0;
+  color: #9b2222;
+}
+
+.po-CANCELLED {
+  background: #e9ebf0;
+  color: #5b6375;
+}
+
+#tab-procurement table select,
+#tab-procurement table input {
+  min-width: 110px;
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+@media (max-width: 800px) {
+  .proc-form input,
+  .proc-form select,
+  .proc-form textarea {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .proc-actions button,
+  .proc-row-actions button {
+    min-height: 36px;
+  }
+
+  .proc-filters select,
+  .proc-filters input {
+    min-width: 100%;
+    width: 100%;
+  }
+}

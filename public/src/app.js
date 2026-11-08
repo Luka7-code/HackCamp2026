@@ -5,15 +5,25 @@ let scanner = null;
 let lastCode = "";
 let lastTime = 0;
 let currentRole = "worker";
+const itemCache = new Map();
 console.log("app.js loaded");
 
-// ---------- API helper: sends role + employee on every request ----------
+const esc = (s) =>
+  String(s ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
+const pic = (item) => (item.image_url ? `<img src="${esc(item.image_url)}" alt="">` : "📦");
+
+// ---------- API ----------
 async function api(path, options = {}) {
+  console.log(`🌐 API Request: ${options.method || "GET"} ${path}`, options.body ? JSON.parse(options.body) : "");
   const res = await fetch(path, {
     ...options,
     headers: { "Content-Type": "application/json" },
   });
   const data = await res.json();
+  console.log(`📥 API Response from ${path}:`, data);
   if (!res.ok) throw new Error(data.error || "Request failed");
   return data;
 }
@@ -26,17 +36,23 @@ function toast(msg, isError = false) {
   setTimeout(() => (t.className = ""), 2800);
 }
 
+async function loadItemCache() {
+  const rows = await api("/api/items");
+  itemCache.clear();
+  rows.forEach((i) => itemCache.set(i.barcode, i));
+}
+
 // ---------- Role + tabs ----------
 function applyRole() {
   document.body.className = currentRole;
 }
 function showTab(name) {
-  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
-  if (name === "items") loadItems();
-  if (name === "audit") loadAudit();
+  if ($("reader")) $("reader").style.visibility = name === "scan" ? "visible" : "hidden";
+  if (name === "items" && $("itemList")) loadItems();
+  if (name === "audit" && $("auditList")) loadAudit();
 }
-document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+window.showTab = showTab; // the navbar calls this
 
 // ---------- Map ----------
 async function loadMap() {
@@ -52,8 +68,9 @@ async function loadMap() {
       .querySelectorAll(".cell")
       .forEach((c) => c.addEventListener("click", () => handleCode("LOC-" + c.dataset.location)));
   }
-  const newLoc = $("newLoc");
-  if (newLoc) newLoc.innerHTML = locations.map((l) => `<option value="${l.location_code}">${l.label}</option>`).join("");
+  if ($("newLoc")) {
+    $("newLoc").innerHTML = locations.map((l) => `<option value="${l.location_code}">${l.label}</option>`).join("");
+  }
 }
 function highlight(code) {
   document.querySelectorAll(".cell").forEach((c) => c.classList.toggle("active", c.dataset.location === code));
@@ -64,7 +81,6 @@ async function handleCode(raw) {
   const code = raw.trim();
   if (!code) return;
 
-  // Ignore the same code firing repeatedly while the camera is held on it
   const now = Date.now();
   if (code === lastCode && now - lastTime < 3000) return;
   lastCode = code;
@@ -74,74 +90,40 @@ async function handleCode(raw) {
 
   try {
     if (code.startsWith("LOC-")) {
-      const data = await api("/api/shelf/" + encodeURIComponent(code));
-      console.log("✅ Shelf found:", data.location.label, data);
-      highlight(data.location.location_code);
-      showShelf(data);
+      const loc = locations.find((l) => l.barcode === code);
+      if (loc && itemCache.size) {
+        const data = {
+          location: loc,
+          items: [...itemCache.values()].filter(
+            (i) => i.location_code === loc.location_code && Number(i.qty_stowed) > 0,
+          ),
+        };
+        highlight(loc.location_code);
+        showShelf(data);
+      } else {
+        const data = await api("/api/shelf/" + encodeURIComponent(code));
+        highlight(data.location.location_code);
+        showShelf(data);
+      }
     } else {
-      const item = await api("/api/scan/" + encodeURIComponent(code));
-      console.log("✅ Item found:", item.name, item);
-      console.table({
-        name: item.name,
-        sku: item.sku_id,
-        status: item.status,
-        location: item.label || "Not on a shelf",
-      });
-      highlight(item.location_code);
-      showItem(item);
+      const cached = itemCache.get(code);
+      if (cached) {
+        console.log("✅ Item found (cache):", cached.name);
+        highlight(cached.location_code);
+        showItem(cached);
+        api("/api/scan/" + encodeURIComponent(code)) // logs the scan + refreshes data
+          .then((fresh) => itemCache.set(fresh.barcode, fresh))
+          .catch(() => {});
+      } else {
+        const item = await api("/api/scan/" + encodeURIComponent(code));
+        console.log("✅ Item found:", item.name, item);
+        itemCache.set(item.barcode, item);
+        highlight(item.location_code);
+        showItem(item);
+      }
     }
   } catch (err) {
     console.error("❌ Not found / error for", code, "→", err.message);
-    toast(err.message, true);
-  }
-}
-
-function showItem(item) {
-  const options = locations
-    .map(
-      (l) =>
-        `<option value="${l.location_code}" ${l.location_code === item.assigned_location ? "selected" : ""}>${l.label}</option>`,
-    )
-    .join("");
-  $("result").innerHTML = `
-    <div class="item-card">
-      <strong>${item.name}</strong>
-      <span>${item.description || ""}</span>
-      <span><span class="badge ${item.status}">${item.status}</span>
-        ${item.label ? "📍 " + item.label : "Not on a shelf"}</span>
-      <div class="row">
-        <button onclick="setStatus('${item.barcode}','IN_TRANSIT')">Pick up</button>
-        <button class="danger" onclick="setStatus('${item.barcode}','DISPATCHED')">Dispatch</button>
-      </div>
-      <div class="row">
-        <select id="stowLoc">${options}</select>
-        <button onclick="setStatus('${item.barcode}','STOWED', $('stowLoc').value)">Stow here</button>
-      </div>
-    </div>`;
-}
-
-function showShelf(data) {
-  const list = data.items.length
-    ? data.items
-        .map(
-          (i) => `<div class="item-row" onclick="handleCode('${i.barcode}')">
-        <span>${i.name}</span><span class="badge ${i.status}">${i.status}</span></div>`,
-        )
-        .join("")
-    : "<p class='hint'>This shelf is empty.</p>";
-  $("result").innerHTML = `<div class="item-card"><strong>${data.location.label}</strong>${list}</div>`;
-}
-
-async function setStatus(barcode, status, location) {
-  try {
-    await api(`/api/items/${encodeURIComponent(barcode)}/status`, {
-      method: "POST",
-      body: JSON.stringify({ status, location }),
-    });
-    toast("Updated: " + status);
-    lastCode = ""; // allow an immediate re-scan to show the new state
-    await handleCode(barcode);
-  } catch (err) {
     toast(err.message, true);
   }
 }
@@ -152,14 +134,10 @@ let scanning = false;
 async function startScanner() {
   if (scanning) return;
   try {
-    if (typeof Html5Qrcode === "undefined") {
-      throw new Error("Scanner library not loaded");
-    }
+    if (typeof Html5Qrcode === "undefined") throw new Error("Scanner library not loaded");
     const cameras = await Html5Qrcode.getCameras();
-    console.log("Cameras:", cameras);
     if (!cameras.length) throw new Error("No camera found");
 
-    // Prefer a back camera; otherwise the MacBook's built-in camera
     const cam =
       cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
       cameras.find((c) => /macbook pro camera/i.test(c.label)) ||
@@ -174,10 +152,7 @@ async function startScanner() {
     await scanner.start(
       cam.id,
       { fps: 20, qrbox: { width: 450, height: 160 } },
-      (text) => {
-        console.log("📷 Raw scan:", text);
-        handleCode(text);
-      },
+      (text) => handleCode(text),
       () => {},
     );
     scanning = true;
@@ -190,18 +165,20 @@ async function startScanner() {
   }
 }
 startScanner();
-// ---------- Items tab ----------
+
+// ---------- Items tab (only if the page has it) ----------
 async function loadItems() {
   items = await api("/api/items");
   renderItems();
 }
 function renderItems() {
-  const q = $("search").value.toLowerCase();
+  if (!$("itemList")) return;
+  const q = ($("search")?.value || "").toLowerCase();
   $("itemList").innerHTML = items
     .filter((i) => i.name.toLowerCase().includes(q))
     .map(
-      (i) => `<div class="item-row" data-barcode="${i.barcode}">
-        <span>${i.name}<br><small>${i.label || "Not on a shelf"}</small></span>
+      (i) => `<div class="item-row" data-barcode="${esc(i.barcode)}">
+        <span>${esc(i.name)}<br><small>${esc(i.label || "Not on a shelf")}</small></span>
         <span class="badge ${i.status}">${i.status}</span></div>`,
     )
     .join("");
@@ -214,57 +191,251 @@ function renderItems() {
     }),
   );
 }
-$("search").addEventListener("input", renderItems);
+$("search")?.addEventListener("input", renderItems);
+$("manualBtn")?.addEventListener("click", () => handleCode($("manual").value));
+$("manual")?.addEventListener("keydown", (e) => e.key === "Enter" && handleCode($("manual").value));
 
-// ---------- Manager: register ----------
-$("registerBtn").addEventListener("click", async () => {
+// ---------- Manager: register (only if the page has it) ----------
+$("registerBtn")?.addEventListener("click", async () => {
   try {
+    const file = $("newPhoto")?.files[0];
+    const image = file ? await fileToDataUrl(file) : "";
     const out = await api("/api/items", {
       method: "POST",
-      body: JSON.stringify({ name: $("newName").value, description: $("newDesc").value, location: $("newLoc").value }),
+      body: JSON.stringify({
+        name: $("newName").value,
+        description: $("newDesc").value,
+        location: $("newLoc").value,
+        quantity: $("newQty")?.value ?? 1,
+        image,
+      }),
     });
     $("registered").innerHTML = `<div class="item-card"><strong>Registered!</strong>
-  <span>Barcode: <code>${out.barcode}</code></span>
-  <a href="/labels.html?sku=${out.barcode}" target="_blank">🖨 Print label</a></div>`;
+      <span>Barcode: <code>${esc(out.barcode)}</code></span>
+      <a href="/labels.html?sku=${encodeURIComponent(out.barcode)}" target="_blank">🖨 Print label</a></div>`;
     $("newName").value = "";
     $("newDesc").value = "";
     highlight(out.location);
     toast("Item registered");
+    loadItemCache().catch(() => {});
   } catch (err) {
     toast(err.message, true);
   }
 });
 
-// ---------- Manager: audit ----------
+// ---------- Manager: audit (timeline) ----------
 async function loadAudit() {
+  if (!$("auditList")) return;
   try {
-    const sku = $("auditSku").value.trim();
+    const sku = $("auditSku")?.value.trim() || "";
     const rows = await api("/api/audit" + (sku ? "?sku=" + encodeURIComponent(sku) : ""));
-    $("auditTable").innerHTML =
-      "<tr><th>Time</th><th>Who</th><th>Role</th><th>Item</th><th>Action</th><th>From</th><th>To</th></tr>" +
-      rows
-        .map(
-          (r) => `<tr><td>${r.event_time.slice(0, 19)}</td><td>${r.employee_id}</td><td>${r.role}</td>
-        <td>${r.item_name || r.sku_id}</td><td>${r.action_type}</td>
-        <td>${r.from_location || "-"}</td><td>${r.to_location || "-"}</td></tr>`,
-        )
-        .join("");
+    $("auditList").innerHTML = rows
+      .map(
+        (r) => `<div class="event">
+          <div class="event-head">
+            <span>${esc(r.event_time.slice(11, 19))} · ${esc(r.employee_id)}</span>
+            <span class="tag ${esc(r.action_type)}">${esc(r.action_type)}</span>
+          </div>
+          <div><b>${esc(r.item_name || r.sku_id)}</b> (${esc(r.sku_id)})${r.quantity ? " × " + esc(r.quantity) : ""}</div>
+          <div class="mv">${esc(r.from_location || "—")} → ${esc(r.to_location || "—")}</div>
+        </div>`,
+      )
+      .join("");
   } catch (err) {
     toast(err.message, true);
   }
 }
-$("auditBtn").addEventListener("click", loadAudit);
+$("auditBtn")?.addEventListener("click", loadAudit);
 
-// ---------- Start ----------
 // ---------- Start ----------
 (async () => {
   try {
     const me = await api("/api/me");
     currentRole = me.role;
-    $("whoami").textContent = `${me.email} (${me.role})`;
+    if ($("whoami")) $("whoami").textContent = `${me.email} (${me.role})`;
     applyRole();
     await loadMap();
+    loadItemCache().catch((e) => toast(e.message, true));
   } catch (e) {
     toast(e.message, true);
   }
 })();
+
+// ---------- Bottom sheet ----------
+function openSheet(html) {
+  $("sheetBody").innerHTML = html;
+  $("sheet").classList.add("open");
+}
+function closeSheet() {
+  $("sheet").classList.remove("open");
+  lastTime = Date.now();
+}
+$("sheetClose").addEventListener("click", closeSheet);
+
+function shelfOptions(selected) {
+  return locations
+    .map(
+      (l) => `<option value="${l.location_code}" ${l.location_code === selected ? "selected" : ""}>${l.label}</option>`,
+    )
+    .join("");
+}
+
+function showItem(item) {
+  const btn = (s, icon, label) =>
+    `<button class="status-btn ${s} ${item.status === s ? "current" : ""}"
+       onclick="chooseStatus('${esc(item.barcode)}','${s}')"><span>${icon}</span>${label}</button>`;
+
+  const when = item.updated_at
+    ? new Date(item.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "-";
+
+  openSheet(`
+    <div class="sheet-top">
+      <div class="sheet-img">${pic(item)}</div>
+      <div>
+        <div class="sheet-label">Title</div>
+        <div class="sheet-name">${esc(item.name)}</div>
+        <div class="sheet-meta" style="margin:0">SKU: ${esc(item.sku_id)}</div>
+        <div class="sheet-meta sheet-loc" style="margin:0">
+          Location: <b>${esc(item.label || "Not on a shelf")}</b></div>
+      </div>
+    </div>
+
+    <div class="sheet-stats">
+  <div><span class="sheet-label">On shelf</span><strong>${item.qty_stowed ?? 0}</strong></div>
+  <div><span class="sheet-label">In transit</span><strong>${item.qty_in_transit ?? 0}</strong></div>
+  <div><span class="sheet-label">Dispatched</span><strong>${item.qty_dispatched ?? 0}</strong></div>
+</div>
+
+<div class="shelf-pick">
+  <span class="sheet-label">Amount</span>
+  <div class="qty">
+    <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
+    <input id="qtyPick" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
+    <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
+  </div>
+</div>
+
+<div class="status-row">
+  ${btn("STOWED", "📥", "Stowed")}
+  ${btn("IN_TRANSIT", "🚚", "In-Transit")}
+  ${btn("DISPATCHED", "📤", "Dispatched")}
+</div>
+
+    <div class="shelf-pick">
+      <span class="sheet-label">Stow on</span>
+      <select id="sheetLoc">${shelfOptions(item.location_code || item.assigned_location)}</select>
+    </div>
+
+    <div class="sheet-foot">
+      <span>Last updated: ${when}</span><span>Operator: ${esc(item.updated_by || "-")}</span>
+    </div>`);
+}
+
+function showShelf(data) {
+  const loc = data.location;
+  const rows = data.items.length
+    ? data.items
+        .map(
+          (i) => `<div class="shelf-row" onclick="handleCode('${esc(i.barcode)}')">
+            <div class="shelf-row-left">
+              <div class="shelf-thumb">${pic(i)}</div>
+              <div class="shelf-row-main">
+                <div class="shelf-row-name">${esc(i.name)}</div>
+                <div class="shelf-row-sku">${esc(i.sku_id)}</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div class="shelf-qty">× ${i.qty_stowed ?? 0}</div>
+              <span class="pill ${i.status}">${i.status.replace("_", " ")}</span>
+            </div>
+          </div>`,
+        )
+        .join("")
+    : `<p class="sheet-meta">This shelf is empty.</p>`;
+
+  openSheet(`
+    <div class="shelf-head">
+      <div class="shelf-bay">BAY ${esc(loc.bay)}</div>
+      <div class="shelf-zone">Zone ${esc(loc.zone)} · Aisle ${esc(loc.aisle)}</div>
+    </div>
+    <div class="sheet-label">${data.items.length} item(s) on this shelf</div>
+    <div class="shelf-list">${rows}</div>`);
+}
+
+// ---------- Actions (optimistic: UI updates first, server syncs after) ----------
+
+function fileToDataUrl(file, max = 320) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function stepQty(d) {
+  const el = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
+  if (!el) return;
+  const oldVal = parseInt(el.value, 10) || 1;
+  el.value = Math.max(1, oldVal + d);
+  console.log("🔢 Quantity adjusted by:", d, "→ New value:", el.value);
+}
+
+function chooseStatus(barcode, status) {
+  const qtyInput = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
+  const amount = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
+
+  const locEl = document.querySelector("#sheetBody #sheetLoc");
+  const loc = status === "STOWED" ? (locEl ? locEl.value : undefined) : undefined;
+
+  console.log("🚀 chooseStatus triggered:", {
+    barcode,
+    status,
+    amount,
+    location: loc,
+    rawInputValue: qtyInput ? qtyInput.value : "not found",
+  });
+
+  setStatus(barcode, status, loc, amount);
+}
+
+async function setStatus(barcode, status, location, amount = 1) {
+  console.log("📡 Sending API request for status change...", { barcode, status, location, amount });
+  $("sheetBody").style.opacity = 0.5;
+  try {
+    const out = await api(`/api/items/${encodeURIComponent(barcode)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, location, amount }),
+    });
+    console.log("📥 API response received:", out);
+
+    // Refresh item cache from backend so data is fully in sync
+    await loadItemCache();
+
+    const freshItem = itemCache.get(barcode);
+    if (freshItem) {
+      highlight(freshItem.location_code);
+      showItem(freshItem); // Automatically re-renders the sheet with updated quantities!
+    } else {
+      closeSheet();
+    }
+
+    const msgs = { IN_TRANSIT: "grabbed", STOWED: "put on shelf", DISPATCHED: "dispatched" };
+    toast(`${amount} unit(s) ${msgs[status]}`);
+  } catch (err) {
+    console.error("❌ setStatus failed:", err.message);
+    toast(err.message, true);
+  } finally {
+    $("sheetBody").style.opacity = 1;
+  }
+}
