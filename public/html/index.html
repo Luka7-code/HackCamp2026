@@ -8,46 +8,16 @@
     <script type="module" src="/src/nav-bar.js"></script>
   </head>
   <body>
-    <header>
-      <h1>📦 Warehouse WMS</h1>
-      <div class="who">
-        <span id="whoami"></span>
-        <a href="/logout" style="color: #fff">Log out</a>
-      </div>
-    </header>
     <div id="toast"></div>
     <main>
       <div id="reader"></div>
-
-      <!-- ITEMS TAB -->
-      <section id="tab-items" class="card tab" hidden>
-        <h2>Items</h2>
-        <input id="search" placeholder="Search items by name..." />
-        <div id="itemList"></div>
-      </section>
-
-      <!-- REGISTER TAB (manager) -->
-      <section id="tab-register" class="card tab" hidden>
-        <h2>Register new item</h2>
-        <input id="newName" placeholder="Item name" />
-        <input id="newDesc" placeholder="Description" />
-        <select id="newLoc"></select>
-        <button id="registerBtn">Register item</button>
-        <div id="registered"></div>
-      </section>
-
-      <!-- AUDIT TAB (manager) -->
-      <section id="tab-audit" class="card tab" hidden>
-        <h2>Audit history</h2>
-        <div class="row">
-          <input id="auditSku" placeholder="Filter by SKU (optional)" />
-          <button id="auditBtn">Load</button>
-        </div>
-        <div class="scroll"><table id="auditTable"></table></div>
-      </section>
       <site-navbar></site-navbar>
     </main>
-
+    <div id="sheet" aria-live="polite">
+      <div class="sheet-handle"></div>
+      <button id="sheetClose" aria-label="Close">✕</button>
+      <div id="sheetBody"></div>
+    </div>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
   </body>
