@@ -1,0 +1,273 @@
+{
+  "generated_at": "2026-11-08T03:35:18.484056+00:00",
+  "datasets": {
+    "freshretailnet": {
+      "dataset_id": "freshretailnet",
+      "display_name": "FreshRetailNet-50K",
+      "source_url": "https://huggingface.co/datasets/THULab/freshretailnet_50k",
+      "license": "CC BY 4.0",
+      "notes": "50,000 store-product 90-day series from 898 stores in 18 Chinese cities. sale_amount is a globally normalized sales amount, used as the demand target; stock_hour6_22_cnt provides organic stockout labels.",
+      "raw_files": [
+        {
+          "name": "freshretailnet_50k_eval.tsfile",
+          "bytes": 354639498
+        },
+        {
+          "name": "freshretailnet_50k_train.tsfile",
+          "bytes": 657947093
+        }
+      ],
+      "full_dataset": {
+        "series": 50000,
+        "stores": 898,
+        "products": 865,
+        "days": 90,
+        "stockout_share": "approximately 20% organically occurring stockout records"
+      },
+      "inspection": {
+        "dataset_id": "freshretailnet",
+        "path": "D:\\PythonProjects\\hackcamp_v2\\ml\\data\\raw\\freshretailnet\\freshretailnet_50k_train.tsfile",
+        "table": "freshretailnet_50k_train",
+        "columns": [
+          "city_id",
+          "store_id",
+          "management_group_id",
+          "first_category_id",
+          "second_category_id",
+          "third_category_id",
+          "product_id",
+          "sale_amount",
+          "stock_hour6_22_cnt",
+          "discount",
+          "holiday_flag",
+          "activity_flag",
+          "precpt",
+          "avg_temperature",
+          "avg_humidity",
+          "avg_wind_level",
+          "hours_sale_00",
+          "hours_sale_01",
+          "hours_sale_02",
+          "hours_sale_03",
+          "hours_sale_04",
+          "hours_sale_05",
+          "hours_sale_06",
+          "hours_sale_07",
+          "hours_sale_08",
+          "hours_sale_09",
+          "hours_sale_10",
+          "hours_sale_11",
+          "hours_sale_12",
+          "hours_sale_13",
+          "hours_sale_14",
+          "hours_sale_15",
+          "hours_sale_16",
+          "hours_sale_17",
+          "hours_sale_18",
+          "hours_sale_19",
+          "hours_sale_20",
+          "hours_sale_21",
+          "hours_sale_22",
+          "hours_sale_23",
+          "hours_stock_status_00",
+          "hours_stock_status_01",
+          "hours_stock_status_02",
+          "hours_stock_status_03",
+          "hours_stock_status_04",
+          "hours_stock_status_05",
+          "hours_stock_status_06",
+          "hours_stock_status_07",
+          "hours_stock_status_08",
+          "hours_stock_status_09",
+          "hours_stock_status_10",
+          "hours_stock_status_11",
+          "hours_stock_status_12",
+          "hours_stock_status_13",
+          "hours_stock_status_14",
+          "hours_stock_status_15",
+          "hours_stock_status_16",
+          "hours_stock_status_17",
+          "hours_stock_status_18",
+          "hours_stock_status_19",
+          "hours_stock_status_20",
+          "hours_stock_status_21",
+          "hours_stock_status_22",
+          "hours_stock_status_23"
+        ],
+        "implicit_time_column": "time",
+        "sample": [
+          {
+            "time": 1711584000000,
+            "city_id": "0",
+            "store_id": "0",
+            "management_group_id": "0",
+            "first_category_id": "28",
+            "second_category_id": "72",
+            "third_category_id": "154",
+            "product_id": "834",
+            "sale_amount": 0.9
+          },
+          {
+            "time": 1711670400000,
+            "city_id": "0",
+            "store_id": "0",
+            "management_group_id": "0",
+            "first_category_id": "28",
+            "second_category_id": "72",
+            "third_category_id": "154",
+            "product_id": "834",
+            "sale_amount": 2.0
+          },
+          {
+            "time": 1711756800000,
+            "city_id": "0",
+            "store_id": "0",
+            "management_group_id": "0",
+            "first_category_id": "28",
+            "second_category_id": "72",
+            "third_category_id": "154",
+            "product_id": "834",
+            "sale_amount": 1.9
+          }
+        ],
+        "notes": [
+          "sale_amount is globally normalized sales amount, used as demand.",
+          "stock_hour6_22_cnt > 0 marks an organic stockout day.",
+          "Hourly sequence columns are intentionally not loaded."
+        ]
+      },
+      "train_sample": {
+        "series": 2000,
+        "rows": 180000,
+        "stores": 733,
+        "products": 455,
+        "date_min": "2024-03-28",
+        "date_max": "2024-06-25",
+        "days_median": 90.0,
+        "units_mean": 0.9656,
+        "units_median": 0.7,
+        "units_zero_share": 0.0465,
+        "stockout_rate": 0.4396,
+        "promo_rate": 0.5211,
+        "missing": {
+          "stockout": 0.0,
+          "discount": 0.0,
+          "price": 1.0,
+          "temperature": 0.0,
+          "precipitation": 0.0,
+          "humidity": 0.0
+        }
+      },
+      "eval_sample": {
+        "series": 800,
+        "rows": 5600,
+        "stores": 493,
+        "products": 360,
+        "date_min": "2024-06-26",
+        "date_max": "2024-07-02",
+        "days_median": 7.0,
+        "units_mean": 1.1509,
+        "units_median": 0.7,
+        "units_zero_share": 0.038,
+        "stockout_rate": 0.3902,
+        "promo_rate": 0.5246,
+        "missing": {
+          "stockout": 0.0,
+          "discount": 0.0,
+          "price": 1.0,
+          "temperature": 0.0,
+          "precipitation": 0.0,
+          "humidity": 0.0
+        }
+      }
+    },
+    "m5": {
+      "dataset_id": "m5",
+      "display_name": "M5 Walmart Forecasting (Accuracy)",
+      "source_url": "https://www.kaggle.com/competitions/m5-forecasting-accuracy/data",
+      "license": "Kaggle competition terms (public data)",
+      "notes": "Official competition files mirrored on Hugging Face because the Kaggle API requires an authenticated account. Daily unit sales, calendar events/SNAP days and sell prices are used. M5 has no stockout labels.",
+      "raw_files": [
+        {
+          "name": "calendar.csv",
+          "bytes": 103469
+        },
+        {
+          "name": "sales_train_evaluation.csv",
+          "bytes": 121736518
+        },
+        {
+          "name": "sell_prices.csv",
+          "bytes": 203395785
+        }
+      ],
+      "full_dataset": {
+        "series": 30490,
+        "items": 3049,
+        "stores": 10,
+        "days": 1941,
+        "categories": [
+          "FOODS",
+          "HOBBIES",
+          "HOUSEHOLD"
+        ],
+        "stockout_labels": "not available"
+      },
+      "inspection": {
+        "dataset_id": "m5",
+        "files": {
+          "sales": "D:\\PythonProjects\\hackcamp_v2\\ml\\data\\raw\\m5\\sales_train_evaluation.csv",
+          "calendar": "D:\\PythonProjects\\hackcamp_v2\\ml\\data\\raw\\m5\\calendar.csv",
+          "prices": "D:\\PythonProjects\\hackcamp_v2\\ml\\data\\raw\\m5\\sell_prices.csv"
+        },
+        "series": 30490,
+        "items": 3049,
+        "stores": 10,
+        "categories": [
+          "FOODS",
+          "HOBBIES",
+          "HOUSEHOLD"
+        ],
+        "date_min": "2011-01-29",
+        "date_max": "2016-06-19",
+        "sales_columns": 1941,
+        "price_rows": 6841121,
+        "price_missing": 0.0,
+        "notes": [
+          "Daily unit sales are used as demand (not normalized).",
+          "SNAP and calendar events are used as promotion features.",
+          "No stockout labels exist; stockout risk is computed downstream."
+        ]
+      },
+      "train_sample": {
+        "series": 2000,
+        "rows": 730000,
+        "stores": 10,
+        "products": 1519,
+        "date_min": "2015-05-24",
+        "date_max": "2016-05-22",
+        "days_median": 365.0,
+        "units_mean": 1.2816,
+        "units_median": 0.0,
+        "units_zero_share": 0.5936,
+        "stockout_rate": null,
+        "promo_rate": 0.3869,
+        "missing": {
+          "stockout": 1.0,
+          "discount": 1.0,
+          "price": 0.0024,
+          "temperature": 1.0,
+          "precipitation": 1.0,
+          "humidity": 1.0
+        }
+      }
+    }
+  },
+  "sampling": {
+    "freshretailnet_train_series": 2000,
+    "freshretailnet_eval_series": 800,
+    "m5_series": 2000,
+    "seed": 42,
+    "note": "Samples are stratified by category so training stays tractable; the full raw files are downloaded and retained separately."
+  }
+}
