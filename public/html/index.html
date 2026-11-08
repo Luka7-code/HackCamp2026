@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Warehouse WMS</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/predictive.css" />
   </head>
   <body>
     <header>
@@ -20,6 +21,7 @@
       <button data-tab="items">Items</button>
       <button data-tab="register" class="mgr">Register item</button>
       <button data-tab="audit" class="mgr">Audit history</button>
+      <button data-tab="predictive" class="mgr">Predictive AI</button>
     </nav>
 
     <div id="toast"></div>
@@ -73,9 +75,118 @@
         </div>
         <div class="scroll"><table id="auditTable"></table></div>
       </section>
+
+      <!-- PREDICTIVE AI TAB (manager) -->
+      <section id="tab-predictive" class="card tab" hidden>
+        <div class="pred-header">
+          <div>
+            <h2>Predictive AI</h2>
+            <p class="hint">Demand forecasts, stockout risk, restocking recommendations and what-if simulation.</p>
+          </div>
+          <span id="predUpdated" class="pred-updated"></span>
+        </div>
+
+        <div id="predNote" class="pred-note">Forecasts combine recent demand history, current inventory, supplier lead times and safety stock.</div>
+        <div id="predSummary" class="pred-kpis"></div>
+
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <div>
+              <h3>Demand forecast</h3>
+              <p class="hint">Predicted units per day based on recent demand and current inventory.</p>
+            </div>
+            <div class="pred-controls">
+              <select id="predSku" aria-label="Select a product"></select>
+              <div class="seg" id="predHorizon" role="group" aria-label="Forecast horizon">
+                <button data-h="7">7 days</button>
+                <button data-h="14">14 days</button>
+                <button data-h="30" class="active">30 days</button>
+              </div>
+            </div>
+          </div>
+          <div id="predMetrics" class="pred-metrics"></div>
+          <div class="pred-chart-wrap">
+            <canvas id="predChart" role="img" aria-label="Observed demand history and predicted demand"></canvas>
+          </div>
+          <div class="pred-chart-foot">
+            <span class="hint">Solid line = observed history · dashed line = forecast</span>
+            <span id="predChartStatus" class="pred-chart-status" aria-live="polite"></span>
+            <button id="predTableBtn" class="link-btn" type="button">Show data table</button>
+          </div>
+          <div id="predTableWrap" class="scroll" hidden></div>
+        </div>
+
+        <div class="pred-two-col">
+          <div class="pred-panel">
+            <div class="pred-panel-head">
+              <h3>Stockout risk</h3>
+              <span class="hint" id="predRiskCount"></span>
+            </div>
+            <div id="predStockouts" class="scroll"></div>
+          </div>
+          <div class="pred-panel">
+            <div class="pred-panel-head">
+              <h3>Overstock</h3>
+              <span class="hint" id="predOverCount"></span>
+            </div>
+            <div id="predOverstock" class="scroll"></div>
+          </div>
+        </div>
+
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Smart restocking</h3>
+            <span class="hint">Recommendations only — inventory is never changed automatically.</span>
+          </div>
+          <div id="predRestock" class="scroll"></div>
+          <div class="pred-actions">
+            <button id="predRunBtn" class="secondary" type="button">Save forecast snapshot</button>
+            <span class="hint" id="predRunNote"></span>
+          </div>
+        </div>
+
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Supplier &amp; safety settings</h3>
+            <span class="hint">Defaults are configurable; manager overrides are stored per product.</span>
+          </div>
+          <div id="predSettings" class="scroll"></div>
+        </div>
+
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>What-if simulation</h3>
+            <span class="hint">Recalculates stockout risk and reorder quantities without changing any data.</span>
+          </div>
+          <div class="pred-sim-controls">
+            <label>Demand change
+              <select id="simDemand">
+                <option value="30">+30%</option>
+                <option value="-20">−20%</option>
+                <option value="0">No change</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </label>
+            <label id="simCustomWrap" hidden>Custom % <input id="simCustom" type="number" value="10" min="-90" max="200" step="1" /></label>
+            <label>Supplier delay
+              <select id="simLead">
+                <option value="0">No delay</option>
+                <option value="3">+3 days</option>
+                <option value="7">+7 days</option>
+                <option value="-2">−2 days</option>
+              </select>
+            </label>
+            <button id="simRunBtn" type="button">Run simulation</button>
+            <button id="simResetBtn" class="secondary" type="button">Reset</button>
+          </div>
+          <div id="simResult" class="pred-sim-result"></div>
+        </div>
+      </section>
     </main>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/src/predictive.js"></script>
   </body>
 </html>

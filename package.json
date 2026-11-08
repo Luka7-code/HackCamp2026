@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node --env-file=.env server.js"
+    "start": "node --env-file=.env server.js",
+    "ml:export": "node --env-file=.env scripts/export-inventory.js",
+    "test": "node --test test/"
   },
   "repository": {
     "type": "git",

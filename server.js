@@ -84,6 +84,10 @@ app.get("/api/me", (req, res) => {
 });
 const managerOnly = (req, res, next) =>
   req.role === "manager" ? next() : res.status(403).json({ error: "Managers only" });
+
+// ---------- Predictive AI (new module; existing routes untouched) ----------
+const { createPredictiveRouter } = require("./lib/predictive/routes");
+app.use("/api/predictive", createPredictiveRouter({ query, managerOnly }));
 // ---------- Audit log (append-only: INSERT only) ----------
 function logEvent(req, sku, action, fromLoc, toLoc) {
   return query(
