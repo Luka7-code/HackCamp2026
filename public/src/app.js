@@ -77,6 +77,8 @@ function highlight(code) {
 }
 
 // ---------- Scanning ----------
+let pendingScan = null; // { type: 'item' | 'shelf', code, data } -> Persistent with no time limit!
+
 async function handleCode(raw) {
   const code = raw.trim();
   if (!code) return;
@@ -88,46 +90,168 @@ async function handleCode(raw) {
 
   console.log("📷 Barcode detected:", code);
 
+  // Determine if code is a shelf location
+  const matchedLoc = locations.find(
+    (l) => l.barcode === code || l.location_code === code || "LOC-" + l.location_code === code,
+  );
+  const isShelf = code.startsWith("LOC-") || !!matchedLoc;
+  const shelfData =
+    matchedLoc || (isShelf ? locations.find((l) => "LOC-" + l.location_code === code || l.barcode === code) : null);
+
   try {
-    if (code.startsWith("LOC-")) {
-      const loc = locations.find((l) => l.barcode === code);
-      if (loc && itemCache.size) {
+    if (isShelf) {
+      const resolvedLoc = shelfData || { location_code: code.replace("LOC-", ""), label: code };
+      highlight(resolvedLoc.location_code);
+
+      // Workflow A: An item was scanned previously, now a shelf is scanned -> Quick Dispatch!
+      if (pendingScan && pendingScan.type === "item") {
+        const item = pendingScan.data;
+        pendingScan = null; // Reset pending state
+        console.log("⚡ Two-step scan: Item + Shelf -> Quick Dispatch");
+        showQuickDispatchSheet(item, resolvedLoc);
+        toast(`Ready to dispatch ${item.name} from ${resolvedLoc.label || resolvedLoc.location_code}`);
+        return;
+      }
+
+      // Otherwise, store this shelf as the new pending scan (or replace previous shelf)
+      pendingScan = { type: "shelf", code, data: resolvedLoc };
+      toast(`Shelf scanned: ${resolvedLoc.label || resolvedLoc.location_code}. Scan item to stow.`);
+
+      const shelfCode = resolvedLoc.location_code;
+      if (itemCache.size) {
         const data = {
-          location: loc,
+          location: resolvedLoc,
           items: [...itemCache.values()].filter(
-            (i) => i.location_code === loc.location_code && Number(i.qty_stowed) > 0,
+            (i) =>
+              i.location_code === shelfCode ||
+              i.locations?.some((l) => l.location_code === shelfCode && Number(l.qty_stowed) > 0),
           ),
         };
-        highlight(loc.location_code);
         showShelf(data);
       } else {
-        const data = await api("/api/shelf/" + encodeURIComponent(code));
-        highlight(data.location.location_code);
+        const data = await api("/api/shelf/" + encodeURIComponent("LOC-" + shelfCode));
         showShelf(data);
       }
     } else {
-      const cached = itemCache.get(code);
-      if (cached) {
-        console.log("✅ Item found (cache):", cached.name);
-        highlight(cached.location_code);
-        showItem(cached);
-        api("/api/scan/" + encodeURIComponent(code)) // logs the scan + refreshes data
-          .then((fresh) => itemCache.set(fresh.barcode, fresh))
-          .catch(() => {});
-      } else {
-        const item = await api("/api/scan/" + encodeURIComponent(code));
-        console.log("✅ Item found:", item.name, item);
+      // It's an item scan
+      let item = itemCache.get(code);
+      if (!item) {
+        item = await api("/api/scan/" + encodeURIComponent(code));
         itemCache.set(item.barcode, item);
-        highlight(item.location_code);
-        showItem(item);
       }
+      highlight(item.location_code);
+
+      // Workflow B: A shelf was scanned previously, now an item is scanned -> Quick Stow!
+      if (pendingScan && pendingScan.type === "shelf") {
+        const shelf = pendingScan.data;
+        pendingScan = null; // Reset pending state
+        console.log("⚡ Two-step scan: Shelf + Item -> Quick Stow");
+        showQuickStowSheet(shelf, item);
+        toast(`Ready to stow ${item.name} onto ${shelf.label || shelf.location_code}`);
+        return;
+      }
+
+      // Otherwise, store this item as the new pending scan (or replace previous item)
+      pendingScan = { type: "item", code, data: item };
+      toast(`Item scanned: ${item.name}. Scan shelf to dispatch/stow.`);
+      showItem(item);
+
+      api("/api/scan/" + encodeURIComponent(code))
+        .then((fresh) => {
+          itemCache.set(fresh.barcode, fresh);
+          if (pendingScan && pendingScan.type === "item" && pendingScan.code === code) {
+            pendingScan.data = fresh;
+          }
+        })
+        .catch(() => {});
     }
   } catch (err) {
-    console.error("❌ Not found / error for", code, "→", err.message);
+    console.error("❌ Scan error for", code, "→", err.message);
     toast(err.message, true);
+    pendingScan = null;
   }
 }
 
+// ---------- Quick Action Popups ----------
+function showQuickDispatchSheet(item, shelf) {
+  const shelfCode = shelf.location_code || shelf.barcode || shelf;
+  const shelfLoc = item.locations?.find((l) => l.location_code === shelfCode || l.label === shelfCode);
+  const maxQty = shelfLoc && shelfLoc.qty_stowed !== undefined ? shelfLoc.qty_stowed : (item.qty_stowed ?? 0);
+
+  console.log("🔍 Opening Quick Dispatch Sheet:", { item, shelf, shelfCode, shelfLoc, maxQty });
+
+  openSheet(`
+    <div class="sheet-top">
+      <div class="sheet-img">${pic(item)}</div>
+      <div>
+        <div class="sheet-label">Quick Dispatch</div>
+        <div class="sheet-name">${esc(item.name)}</div>
+        <div class="sheet-meta">From Shelf: <b>${esc(shelf.label || shelfCode)}</b></div>
+        <div class="sheet-meta" style="margin:0">Available on shelf: <b>${maxQty}</b></div>
+      </div>
+    </div>
+
+    <div class="shelf-pick" style="margin-top: 14px;">
+      <span class="sheet-label">Amount to Dispatch</span>
+      <div class="qty">
+        <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
+        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxQty}" value="1" inputmode="numeric">
+        <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
+      </div>
+    </div>
+
+    <button class="status-btn DISPATCHED current" style="width:100%; margin-top:16px; padding:14px; font-size:1rem; border-radius:12px; background:var(--green); color:#fff; border:none; cursor:pointer;"
+            onclick="confirmQuickAction('${esc(item.barcode)}', 'DISPATCHED', '${esc(shelfCode)}')">
+      <span>📤</span> Confirm Dispatch
+    </button>
+  `);
+}
+
+function showQuickStowSheet(shelf, item) {
+  const shelfCode = shelf.location_code || shelf.barcode || shelf;
+  const maxTransit = item.qty_in_transit ?? 0;
+
+  console.log("🔍 Opening Quick Stow Sheet:", { shelf, item, shelfCode, maxTransit });
+
+  openSheet(`
+    <div class="sheet-top">
+      <div class="sheet-img">${pic(item)}</div>
+      <div>
+        <div class="sheet-label">Quick Stow</div>
+        <div class="sheet-name">${esc(item.name)}</div>
+        <div class="sheet-meta">To Shelf: <b>${esc(shelf.label || shelfCode)}</b></div>
+        <div class="sheet-meta" style="margin:0">In-Transit Available: <b>${maxTransit}</b></div>
+      </div>
+    </div>
+
+    <div class="shelf-pick" style="margin-top: 14px;">
+      <span class="sheet-label">Amount to Stow</span>
+      <div class="qty">
+        <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
+        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxTransit}" value="1" inputmode="numeric">
+        <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
+      </div>
+    </div>
+
+    <button class="status-btn STOWED current" style="width:100%; margin-top:16px; padding:14px; font-size:1rem; border-radius:12px; background:var(--accent); color:#fff; border:none; cursor:pointer;"
+            onclick="confirmQuickAction('${esc(item.barcode)}', 'STOWED', '${esc(shelfCode)}')">
+      <span>📥</span> Confirm Stow
+    </button>
+  `);
+}
+
+async function confirmQuickAction(barcode, status, locationCode) {
+  const qtyInput = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
+  const amount = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
+
+  console.log("⚡ Executing quick action:", { barcode, status, locationCode, amount });
+  if (!locationCode) {
+    toast("Error: Location code is missing", true);
+    return;
+  }
+  await setStatus(barcode, status, locationCode, amount);
+  pendingScan = null;
+}
 // ---------- Scanner (always on) ----------
 let scanning = false;
 
@@ -269,6 +393,7 @@ function openSheet(html) {
 function closeSheet() {
   $("sheet").classList.remove("open");
   lastTime = Date.now();
+  pendingScan = null; // Clears the pending sequential scan when you close the popup!
 }
 $("sheetClose").addEventListener("click", closeSheet);
 
@@ -282,12 +407,21 @@ function shelfOptions(selected) {
 
 function showItem(item) {
   const btn = (s, icon, label) =>
-    `<button class="status-btn ${s} ${item.status === s ? "current" : ""}"
-       onclick="chooseStatus('${esc(item.barcode)}','${s}')"><span>${icon}</span>${label}</button>`;
+    `<button class="status-btn ${s}" onclick="chooseStatus('${esc(item.barcode)}','${s}')"><span>${icon}</span>${label}</button>`;
 
-  const when = item.updated_at
-    ? new Date(item.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "-";
+  // Build HTML list of all locations where this item is stored
+  const locationsHtml =
+    item.locations && item.locations.length > 0
+      ? item.locations
+          .map(
+            (l) => `
+        <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee;">
+          <span>📍 <b>${esc(l.label || l.location_code)}</b></span>
+          <span><b>${l.qty_stowed}</b> units</span>
+        </div>`,
+          )
+          .join("")
+      : `<div class="sheet-meta">Not currently stowed on any shelf.</div>`;
 
   openSheet(`
     <div class="sheet-top">
@@ -296,40 +430,40 @@ function showItem(item) {
         <div class="sheet-label">Title</div>
         <div class="sheet-name">${esc(item.name)}</div>
         <div class="sheet-meta" style="margin:0">SKU: ${esc(item.sku_id)}</div>
-        <div class="sheet-meta sheet-loc" style="margin:0">
-          Location: <b>${esc(item.label || "Not on a shelf")}</b></div>
       </div>
     </div>
 
     <div class="sheet-stats">
-  <div><span class="sheet-label">On shelf</span><strong>${item.qty_stowed ?? 0}</strong></div>
-  <div><span class="sheet-label">In transit</span><strong>${item.qty_in_transit ?? 0}</strong></div>
-  <div><span class="sheet-label">Dispatched</span><strong>${item.qty_dispatched ?? 0}</strong></div>
-</div>
-
-<div class="shelf-pick">
-  <span class="sheet-label">Amount</span>
-  <div class="qty">
-    <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
-    <input id="qtyPick" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
-    <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
-  </div>
-</div>
-
-<div class="status-row">
-  ${btn("STOWED", "📥", "Stowed")}
-  ${btn("IN_TRANSIT", "🚚", "In-Transit")}
-  ${btn("DISPATCHED", "📤", "Dispatched")}
-</div>
-
-    <div class="shelf-pick">
-      <span class="sheet-label">Stow on</span>
-      <select id="sheetLoc">${shelfOptions(item.location_code || item.assigned_location)}</select>
+      <div><span class="sheet-label">In Transit</span><strong style="color:var(--blue);">${item.qty_in_transit ?? 0}</strong></div>
+      <div><span class="sheet-label">Dispatched</span><strong style="color:var(--green);">${item.qty_dispatched ?? 0}</strong></div>
     </div>
 
-    <div class="sheet-foot">
-      <span>Last updated: ${when}</span><span>Operator: ${esc(item.updated_by || "-")}</span>
-    </div>`);
+    <div style="margin: 12px 0;">
+      <span class="sheet-label">Stowed Locations</span>
+      <div style="background:var(--panel2); padding:8px 12px; border-radius:10px; max-height:140px; overflow-y:auto;">
+        ${locationsHtml}
+      </div>
+    </div>
+
+    <div class="shelf-pick">
+      <span class="sheet-label">Amount</span>
+      <div class="qty">
+        <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
+        <input id="qtyPick" class="qty-input" type="number" min="1" value="1" inputmode="numeric">
+        <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
+      </div>
+    </div>
+
+    <div class="status-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+      ${btn("STOWED", "📥", "Stow (From Transit)")}
+      ${btn("DISPATCHED", "📤", "Dispatch (From Shelf)")}
+    </div>
+
+    <div class="shelf-pick" style="margin-top: 10px;">
+      <span class="sheet-label">Select Location (for Stow / Dispatch)</span>
+      <select id="sheetLoc">${shelfOptions()}</select>
+    </div>
+  `);
 }
 
 function showShelf(data) {
@@ -395,16 +529,11 @@ function chooseStatus(barcode, status) {
   const qtyInput = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
   const amount = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
 
+  // Grab the selected location from the dropdown for both STOWED and DISPATCHED
   const locEl = document.querySelector("#sheetBody #sheetLoc");
-  const loc = status === "STOWED" ? (locEl ? locEl.value : undefined) : undefined;
+  const loc = locEl ? locEl.value : undefined;
 
-  console.log("🚀 chooseStatus triggered:", {
-    barcode,
-    status,
-    amount,
-    location: loc,
-    rawInputValue: qtyInput ? qtyInput.value : "not found",
-  });
+  console.log("🚀 chooseStatus triggered:", { barcode, status, amount, location: loc });
 
   setStatus(barcode, status, loc, amount);
 }
