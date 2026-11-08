@@ -99,7 +99,7 @@ app.get("/", (req, res) => {
         document.body.appendChild(banner);
       });
       setTimeout(() => {
-        const button = document.querySelector('#tabs button[data-tab="procurement"]');
+        const button = document.querySelector('button[data-tab="procurement"]');
         if (button) button.click();
       }, 500);
       setTimeout(() => {

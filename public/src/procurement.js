@@ -168,9 +168,7 @@
     const summary = state.summary;
     const currency = state.settings?.currency;
     const cards = [];
-    if (state.settings?.approval_mode === "HUMAN") {
-      cards.push(kpi("Pending approvals", summary.pending_approvals || 0, "Waiting for a decision", "risk"));
-    }
+    cards.push(kpi("Pending approvals", summary.pending_approvals || 0, "Waiting for a decision", "risk"));
     cards.push(kpi("Awaiting supplier", summary.awaiting_supplier || 0, "Order email sent", "recommend"));
     cards.push(kpi("In transit", summary.in_transit || 0, "Confirmed or shipping", ""));
     cards.push(kpi("Pending spend", money(summary.pending_cost || 0, currency), "Open orders", "overstock"));
@@ -194,15 +192,14 @@
 
   function renderPending() {
     const panel = $id("procPendingPanel");
-    const humanMode = state.settings && state.settings.approval_mode === "HUMAN";
-    if (panel) panel.hidden = !humanMode;
-    if (!humanMode) {
+    const pending = state.pos.filter((po) => ["PENDING_APPROVAL", "NEEDS_HUMAN_REVIEW"].includes(po.status));
+    if (panel) panel.hidden = pending.length === 0;
+    if (!pending.length) {
       $id("procPending").innerHTML = "";
       $id("procPendingCount").textContent = "";
       return;
     }
 
-    const pending = state.pos.filter((po) => ["PENDING_APPROVAL", "NEEDS_HUMAN_REVIEW"].includes(po.status));
     $id("procPendingCount").textContent = `${pending.length} awaiting a decision`;
     const rows = pending.map(
       (po) => `<tr>
@@ -534,6 +531,7 @@
         <div class="proc-form">
           <label>Quantity <input id="procEditQty" type="number" min="1" step="1" value="${esc(po.quantity)}" /></label>
           <label>Unit cost <input id="procEditCost" type="number" min="0" step="0.01" value="${esc(po.unit_cost ?? "")}" /></label>
+          <label>Supplier <select id="procEditSupplier">${supplierOptions(po.supplier_id)}</select></label>
           <label>Destination <input id="procEditDest" value="${esc(po.destination_location || "")}" /></label>
           <button type="button" data-act="save-edit" data-po="${esc(po.po_id)}">Save changes</button>
         </div>`;
@@ -651,7 +649,11 @@
             method: "POST",
             body: JSON.stringify({}),
           });
-          notify(`Evaluation: ${result.decision ? result.decision.outcome : result.po.status}`);
+          notify(
+            `AI evaluation: ${result.decision ? result.decision.outcome : result.po.status}` +
+              (result.decision && result.decision.reason ? ` — ${result.decision.reason}` : ""),
+            result.decision && result.decision.outcome === "NEEDS_HUMAN_REVIEW",
+          );
           await refreshAfterAction(poId);
         });
       }
@@ -739,9 +741,11 @@
       }
 
       if (act === "save-edit") {
+        const supplier = $id("procEditSupplier");
         const body = {
           quantity: Number($id("procEditQty").value),
           unit_cost: Number($id("procEditCost").value),
+          supplier_id: supplier && supplier.value ? supplier.value : null,
           destination_location: $id("procEditDest").value,
         };
         return perform(button, async () => {
@@ -810,8 +814,16 @@
           method: "POST",
           body: JSON.stringify({ limit: 20 }),
         });
-        $id("procRunNote").textContent = `Created ${result.created}, duplicates skipped ${result.duplicates}.`;
-        notify(`Automation run created ${result.created} order(s)`);
+        const parts = [`Created ${result.created} order(s)`];
+        if (result.needs_review) parts.push(`${result.needs_review} need product setup`);
+        if (result.duplicates) parts.push(`${result.duplicates} duplicate(s) skipped`);
+        if (result.skipped) parts.push(`${result.skipped} skipped`);
+        $id("procRunNote").textContent = `${parts.join(" · ")}.`;
+        notify(
+          result.created
+            ? `Automation run created ${result.created} order(s)`
+            : "No orders created — no SKUs need restocking right now",
+        );
         state.loadedAt = 0;
         await loadAll(true);
       } catch (error) {
@@ -853,13 +865,7 @@
     wireActions();
     wireControls();
 
-    const tabButton = document.querySelector('#tabs button[data-tab="procurement"]');
-    if (tabButton) {
-      tabButton.addEventListener("click", () => {
-        if (!state.loadedAt || Date.now() - state.loadedAt > 60_000) loadAll();
-      });
-    }
-
+    // index.html's bottom-nav toggle calls this when the panel opens.
     window.loadProcurement = () => loadAll(true);
   }
 

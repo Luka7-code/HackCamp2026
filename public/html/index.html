@@ -624,20 +624,25 @@
         margin: 0 auto;
         display: flex;
         justify-content: space-around;
-        align-items: center;
-        gap: 12px;
+        align-items: stretch;
+        gap: 8px;
       }
 
       .bottom-nav-item {
         display: flex;
+        flex: 1 1 0;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
+        min-width: 0;
         gap: 4px;
         color: rgba(255, 255, 255, 0.6);
         text-decoration: none;
         font-size: 0.75rem;
         font-weight: 600;
-        padding: 6px 16px;
+        line-height: 1.2;
+        text-align: center;
+        padding: 6px 4px;
         border-radius: 10px;
         transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
       }
@@ -645,6 +650,16 @@
       .bottom-nav-item svg {
         width: 20px;
         height: 20px;
+        flex: none;
+      }
+
+      /* Nav items that toggle a panel are buttons; keep them identical to links.
+         Do not use `font: inherit` here — it resets the size/weight above. */
+      button.bottom-nav-item {
+        background: none;
+        border: 0;
+        cursor: pointer;
+        font-family: inherit;
       }
 
       .bottom-nav-item:hover {
@@ -674,9 +689,16 @@
         .brand-divider, .crumb {
           display: none;
         }
+        .bottom-nav-inner {
+          gap: 4px;
+        }
+        .bottom-nav-item {
+          font-size: 0.68rem;
+        }
       }
     </style>
     <link rel="stylesheet" href="/predictive.css" />
+    <link rel="stylesheet" href="/procurement.css" />
   </head>
   <body>
     <!-- Logo mark: isometric crate with the sky-blue L -->
@@ -873,7 +895,96 @@
       </div>
     </section>
 
-    <!-- Popup Bottom Sheet for Scanned Items & Shelves -->
+    <!-- PROCUREMENT (manager) -->
+    <section id="tab-procurement" class="card tab" hidden>
+      <div class="pred-header">
+        <div>
+          <h2>Procurement</h2>
+          <p class="hint">Turn restock recommendations into purchase orders, run them through approval and track supplier replies.</p>
+        </div>
+        <span id="procUpdated" class="pred-updated"></span>
+      </div>
+
+      <div id="procNote" class="pred-note">Run automation to detect restock needs and create purchase orders.</div>
+      <div id="procKpis" class="pred-kpis"></div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <div>
+            <h3>Automation</h3>
+            <p class="hint">Detects restock recommendations, creates purchase orders and routes them through the current approval mode.</p>
+          </div>
+          <div class="pred-actions">
+            <button id="procRunBtn" type="button">Run automation now</button>
+            <button id="procRefreshBtn" class="secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <p class="hint" id="procRunNote"></p>
+      </div>
+
+      <div class="pred-panel" id="procPendingPanel" hidden>
+        <div class="pred-panel-head">
+          <h3>Pending approvals</h3>
+          <span class="hint" id="procPendingCount"></span>
+        </div>
+        <div id="procPending" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Purchase orders</h3>
+          <span class="hint" id="procPOCount"></span>
+        </div>
+        <div class="proc-filters">
+          <select id="procStatusFilter" aria-label="Filter orders by status"></select>
+          <input id="procSearch" type="search" placeholder="Search order, SKU or supplier" />
+        </div>
+        <div id="procPOs" class="scroll"></div>
+      </div>
+
+      <div id="procActionPanel" class="pred-panel proc-action-panel" hidden></div>
+
+      <div class="pred-two-col">
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Suppliers</h3>
+            <span class="hint">Purchase orders are emailed to these addresses.</span>
+          </div>
+          <div id="procSuppliers" class="scroll"></div>
+          <div class="proc-form">
+            <label>Name <input id="supName" placeholder="Supplier name" /></label>
+            <label>Email <input id="supEmail" type="email" placeholder="orders@supplier.com" /></label>
+            <label>Contact <input id="supContact" placeholder="Contact person" /></label>
+            <label>Lead days <input id="supLead" type="number" min="0" step="1" value="7" /></label>
+            <button id="supAddBtn" type="button">Add supplier</button>
+          </div>
+        </div>
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Procurement settings</h3>
+            <span class="hint">Caps are enforced server-side on every order.</span>
+          </div>
+          <div id="procSettings"></div>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Products</h3>
+          <span class="hint">Assign a supplier and unit cost so recommendations become priced orders.</span>
+        </div>
+        <div id="procProducts" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Supplier emails</h3>
+          <span class="hint">Outbound orders and manually recorded replies.</span>
+        </div>
+        <div id="procEmails" class="scroll"></div>
+      </div>
+    </section>
+
     <div id="sheet" aria-live="polite">
       <div class="sheet-handle"></div>
       <button id="sheetClose" aria-label="Close">✕</button>
@@ -902,10 +1013,18 @@
           id="predNavBtn"
           class="bottom-nav-item mgr"
           data-tab="predictive"
-          style="background: none; border: 0; cursor: pointer; font: inherit"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><polyline points="4 15 9 10 13 14 20 5"/></svg>
           Insights
+        </button>
+        <button
+          type="button"
+          id="procNavBtn"
+          class="bottom-nav-item mgr"
+          data-tab="procurement"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Orders
         </button>
       </div>
     </nav>
@@ -914,36 +1033,66 @@
     <script src="/src/app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/src/predictive.js"></script>
+    <script src="/src/procurement.js"></script>
     <script>
       (function () {
-        const button = document.getElementById("predNavBtn");
-        const panel = document.getElementById("tab-predictive");
-        if (!button || !panel) return;
         const scanLink = document.querySelector('.bottom-nav a[href="index.html"]');
+        const items = [
+          { name: "predictive", panel: document.getElementById("tab-predictive"), button: document.getElementById("predNavBtn") },
+          { name: "procurement", panel: document.getElementById("tab-procurement"), button: document.getElementById("procNavBtn") },
+        ].filter((item) => item.panel && item.button);
 
-        function setOpen(open) {
-          panel.hidden = !open;
-          button.classList.toggle("active", open);
-          if (scanLink) scanLink.classList.toggle("active", !open);
-          if (typeof window.showTab === "function") window.showTab(open ? "predictive" : "scan");
-        }
-
-        button.addEventListener("click", () => {
-          const open = panel.hidden;
-          setOpen(open);
-          if (!open && location.hash === "#predictive") {
+        function clearHash() {
+          if (location.hash === "#predictive" || location.hash === "#procurement") {
             history.replaceState(null, "", location.pathname + location.search);
           }
-        });
+        }
 
-        // Other pages link here with #predictive, since this is the only page
-        // that hosts the dashboard.
-        if (location.hash === "#predictive") {
+        function open(item) {
+          for (const other of items) {
+            const active = other === item;
+            other.panel.hidden = !active;
+            other.button.classList.toggle("active", active);
+          }
+          if (scanLink) scanLink.classList.remove("active");
+          if (typeof window.showTab === "function") window.showTab(item.name);
+        }
+
+        function closeAll() {
+          for (const item of items) {
+            item.panel.hidden = true;
+            item.button.classList.remove("active");
+          }
+          if (scanLink) scanLink.classList.add("active");
+          if (typeof window.showTab === "function") window.showTab("scan");
+          clearHash();
+        }
+
+        for (const item of items) {
+          item.button.addEventListener("click", () => {
+            if (item.panel.hidden) {
+              open(item);
+              if (item.name === "procurement" && typeof window.loadProcurement === "function") {
+                window.loadProcurement();
+              }
+            } else {
+              closeAll();
+            }
+          });
+        }
+
+        // Other pages link here with #predictive or #procurement, since this is
+        // the only page that hosts the manager dashboards.
+        const hash = location.hash.replace("#", "");
+        if (hash === "predictive" || hash === "procurement") {
           fetch("/api/me", { headers: { "Content-Type": "application/json" } })
             .then((res) => res.json())
             .then((me) => {
-              history.replaceState(null, "", location.pathname + location.search);
-              if (me && me.role === "manager") button.click();
+              clearHash();
+              if (me && me.role === "manager") {
+                const item = items.find((entry) => entry.name === hash);
+                if (item) item.button.click();
+              }
             })
             .catch(() => {});
         }

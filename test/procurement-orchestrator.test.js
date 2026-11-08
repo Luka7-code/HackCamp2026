@@ -265,14 +265,17 @@ test("detect creates an order and skips SKUs with an active order", async () => 
   assert.equal(created.total_cost, 50);
 });
 
-test("detect skips SKUs without supplier or unit cost", async () => {
+test("detect creates review orders when supplier or unit cost is missing", async () => {
   const world = makeWorld({ settings: { approval_mode: "HUMAN" }, product: null });
 
   const result = await world.orchestrator.detect({ actor: "manager" });
 
-  assert.equal(result.created, 0);
-  assert.equal(result.skipped, 2);
-  assert.equal(world.store.pos.size, 0);
+  assert.equal(result.created, 2);
+  assert.equal(result.needs_review, 2);
+  assert.equal(result.skipped, 0);
+  const created = [...world.store.pos.values()];
+  assert.equal(created.length, 2);
+  for (const po of created) assert.equal(po.status, "NEEDS_HUMAN_REVIEW");
 });
 
 test("evaluate auto-approves a low-risk order within limits", async () => {
