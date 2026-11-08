@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WMS Manager Dashboard</title>
+    <!-- Include html5-qrcode scanner library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #121b2e;
+        --panel2: #18233a;
+        --line: #26334d;
+        --text: #e6ecf8;
+        --muted: #8b97b0;
+        --accent: #f5a623;
+        --teal: #14b8a6;
+        --blue: #3b82f6;
+        --green: #22c55e;
+        --red: #ef4444;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow-x: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, sans-serif;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 20px auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        color: var(--teal);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .back-link:hover {
+        text-decoration: underline;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.75rem;
+        letter-spacing: 0.02em;
+      }
+      nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 12px;
+      }
+      nav button {
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 10px 18px;
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      nav button.active {
+        background: var(--teal);
+        color: #04201c;
+        border-color: var(--teal);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        font-size: 0.9rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--line);
+        padding: 12px;
+        text-align: left;
+      }
+      th {
+        background: var(--panel2);
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+      }
+      td {
+        background: var(--panel);
+      }
+      form {
+        display: grid;
+        gap: 16px;
+        max-width: 600px;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--muted);
+        gap: 6px;
+      }
+      .barcode-group {
+        display: flex;
+        gap: 8px;
+      }
+      .barcode-group input {
+        flex: 1;
+      }
+      input,
+      textarea,
+      select {
+        font: inherit;
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: var(--panel2);
+        color: var(--text);
+        border: 1px solid var(--line);
+        outline: none;
+      }
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: var(--teal);
+      }
+      button.submit-btn,
+      button.scan-btn {
+        background: var(--teal);
+        color: #04201c;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: opacity 0.2s;
+      }
+      button.scan-btn {
+        background: var(--blue);
+        color: #fff;
+      }
+      button.submit-btn:hover,
+      button.scan-btn:hover {
+        opacity: 0.9;
+      }
+      .pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+      .pill.STOWED {
+        color: var(--accent);
+        background: rgba(245, 166, 35, 0.12);
+      }
+      .pill.IN_TRANSIT {
+        color: var(--blue);
+        background: rgba(59, 130, 246, 0.12);
+      }
+      .pill.DISPATCHED {
+        color: var(--green);
+        background: rgba(34, 197, 94, 0.12);
+      }
+      /* Scanner Modal Overlay */
+      #scanner-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+      #scanner-container {
+        width: 100%;
+        max-width: 400px;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+      }
+      .close-scanner {
+        margin-top: 16px;
+        background: var(--red);
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="/" class="back-link">← Back to Warehouse Scanner</a>
+      <h1>Manager Dashboard</h1>
+
+      <nav>
+        <button class="active" onclick="switchTab('inventory')">Inventory Table</button>
+        <button onclick="switchTab('register')">Add New Item</button>
+        <button onclick="switchTab('audit')">Audit Logs</button>
+      </nav>
+
+      <!-- TAB 1: INVENTORY TABLE -->
+      <div id="inventory" class="tab-content active">
+        <h2>Warehouse Inventory</h2>
+        <table id="inventory-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Barcode</th>
+              <th>Name</th>
+              <th>In Transit</th>
+              <th>Stowed Locations</th>
+              <th>Total Stowed</th>
+              <th>Dispatched</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- TAB 2: REGISTER ITEM -->
+      <div id="register" class="tab-content">
+        <h2>Register New Item</h2>
+        <form id="register-form" onsubmit="registerItem(event)">
+          <label
+            >Item Name
+            <input type="text" id="reg-name" required placeholder="e.g. Ergonomic Keyboard" />
+          </label>
+          <label
+            >Custom Barcode (Optional — scan or leave blank to auto-generate)
+            <div class="barcode-group">
+              <input type="text" id="reg-barcode" placeholder="e.g. BARCODE-998877" />
+              <button type="button" class="scan-btn" onclick="startBarcodeScanner()">📷 Scan</button>
+            </div>
+          </label>
+          <label
+            >Description
+            <textarea id="reg-desc" placeholder="Item description..." rows="3"></textarea>
+          </label>
+          <label
+            >Initial Quantity
+            <input type="number" id="reg-qty" min="0" value="0" required />
+          </label>
+          <label
+            >Initial Shelf Location
+            <select id="reg-location" required></select>
+          </label>
+          <label
+            >Image URL (Optional)
+            <input type="url" id="reg-image" placeholder="https://..." />
+          </label>
+          <button type="submit" class="submit-btn">Register Item</button>
+        </form>
+      </div>
+
+      <!-- TAB 3: AUDIT LOGS -->
+      <div id="audit" class="tab-content">
+        <h2>Audit Trail</h2>
+        <table id="audit-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>SKU</th>
+              <th>Item Name</th>
+              <th>Action</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Qty</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Camera Scanner Modal -->
+    <div id="scanner-modal">
+      <div id="scanner-container"></div>
+      <button class="close-scanner" onclick="stopBarcodeScanner()">Cancel Scanning</button>
+    </div>
+
+    <script>
+      let html5QrCode = null;
+
+      function switchTab(tabId) {
+        document.querySelectorAll(".tab-content").forEach((el) => el.classList.remove("active"));
+        document.querySelectorAll("nav button").forEach((el) => el.classList.remove("active"));
+        document.getElementById(tabId).classList.add("active");
+        event.target.classList.add("active");
+
+        if (tabId === "inventory") loadInventory();
+        if (tabId === "register") loadLocations();
+        if (tabId === "audit") loadAudit();
+      }
+
+      async function loadInventory() {
+        const res = await fetch("/api/items");
+        const items = await res.json();
+        const tbody = document.querySelector("#inventory-table tbody");
+        tbody.innerHTML = items
+          .map(
+            (i) => `
+        <tr>
+          <td>${i.sku_id}</td>
+          <td><b>${i.barcode}</b></td>
+          <td>${i.name}</td>
+          <td>${i.qty_in_transit || 0}</td>
+          <td>${i.locations.map((l) => `${l.label} (${l.qty_stowed})`).join(", ") || "None"}</td>
+          <td><b>${i.qty_stowed || 0}</b></td>
+          <td>${i.qty_dispatched || 0}</td>
+        </tr>
+      `,
+          )
+          .join("");
+      }
+
+      async function loadLocations() {
+        const res = await fetch("/api/locations");
+        const locs = await res.json();
+        const select = document.getElementById("reg-location");
+        select.innerHTML = locs
+          .map((l) => `<option value="${l.location_code}">${l.label} (${l.location_code})</option>`)
+          .join("");
+      }
+
+      function startBarcodeScanner() {
+        const modal = document.getElementById("scanner-modal");
+        modal.style.display = "flex";
+
+        html5QrCode = new Html5Qrcode("scanner-container");
+        html5QrCode
+          .start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            (decodedText) => {
+              document.getElementById("reg-barcode").value = decodedText;
+              stopBarcodeScanner();
+            },
+            (errorMessage) => {
+              // scanning continuously in progress
+            },
+          )
+          .catch((err) => {
+            alert("Unable to start camera scanner: " + err);
+            stopBarcodeScanner();
+          });
+      }
+
+      function stopBarcodeScanner() {
+        if (html5QrCode) {
+          html5QrCode
+            .stop()
+            .then(() => {
+              html5QrCode.clear();
+              document.getElementById("scanner-modal").style.display = "none";
+            })
+            .catch((err) => {
+              document.getElementById("scanner-modal").style.display = "none";
+            });
+        } else {
+          document.getElementById("scanner-modal").style.display = "none";
+        }
+      }
+
+      async function registerItem(e) {
+        e.preventDefault();
+        const payload = {
+          name: document.getElementById("reg-name").value,
+          barcode: document.getElementById("reg-barcode").value,
+          description: document.getElementById("reg-desc").value,
+          quantity: parseInt(document.getElementById("reg-qty").value, 10),
+          location: document.getElementById("reg-location").value,
+          image: document.getElementById("reg-image").value,
+        };
+
+        const res = await fetch("/api/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          alert("Item successfully registered with barcode: " + data.barcode);
+          document.getElementById("register-form").reset();
+          switchTab("inventory");
+        } else {
+          alert("Error: " + data.error);
+        }
+      }
+
+      async function loadAudit() {
+        const tbody = document.querySelector("#audit-table tbody");
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--muted);">Loading audit logs...</td></tr>`;
+
+        try {
+          const res = await fetch("/api/audit");
+          if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error || `Server responded with status ${res.status}`);
+          }
+
+          const logs = await res.json();
+          if (!logs.length) {
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--muted);">No audit records found yet. Perform some warehouse actions (scan, stow, dispatch) to populate logs.</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = logs
+            .map(
+              (a) => `
+      <tr>
+        <td>${a.event_time ? new Date(a.event_time).toLocaleString() : "-"}</td>
+        <td>${a.employee_id || "unknown"}</td>
+        <td><span class="pill ${a.role}">${a.role || "worker"}</span></td>
+        <td><b>${a.sku_id || "-"}</b></td>
+        <td>${a.item_name || "N/A"}</td>
+        <td><b>${a.action_type || "INFO"}</b></td>
+        <td>${a.from_label || a.from_location || "-"}</td>
+        <td>${a.to_location ? a.to_label || a.to_location : "-"}</td>
+        <td>${a.quantity === -1 || a.quantity === null ? "-" : a.quantity}</td>
+      </tr>
+    `,
+            )
+            .join("");
+        } catch (err) {
+          console.error("Failed to load audit logs:", err);
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--red);">Error loading audit logs: ${err.message}. Make sure your email is listed in MANAGER_EMAILS.</td></tr>`;
+        }
+      }
+
+      loadInventory();
+    </script>
+  </body>
+</html>

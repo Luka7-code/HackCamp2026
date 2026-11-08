@@ -1,16 +1,12 @@
 const express = require("express");
 const { auth } = require("express-openid-connect");
 const { DBSQLClient } = require("@databricks/sql");
+const path = require("path");
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
-const validImage = (s) =>
-  !s ||
-  (typeof s === "string" &&
-    s.length < 300000 &&
-    (/^data:image\/(jpeg|png|webp);base64,/.test(s) || /^https:\/\//.test(s)));
 
-// Auth0 login. authRequired: true protects the pages AND the API.
+// Auth0 login configuration
 app.use(
   auth({
     authRequired: true,
@@ -23,6 +19,34 @@ app.use(
 );
 
 const T = "workspace.wms";
+
+// ---------- Role handling (Global & Unified) ----------
+const MANAGERS = (process.env.MANAGER_EMAILS || "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+// Apply role check globally across ALL requests (pages and API routes)
+app.use((req, res, next) => {
+  const user = req.oidc.user || {};
+  const email = (user.email || "").toLowerCase();
+  req.role = MANAGERS.includes(email) ? "manager" : "worker";
+  req.employee = email || user.name || "unknown";
+  next();
+});
+
+const managerOnly = (req, res, next) =>
+  req.role === "manager" ? next() : res.status(403).json({ error: "Managers only" });
+
+// Protected HTML page route
+app.get("/manager.html", managerOnly, (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "html", "manager.html"));
+});
+
+// The frontend calls this to learn who is logged in
+app.get("/api/me", (req, res) => {
+  res.json({ name: req.oidc.user.name || req.employee, email: req.employee, role: req.role });
+});
 
 // ---------- Databricks helper (one reused connection) ----------
 let client = null;
@@ -74,11 +98,11 @@ async function rawQuery(statement, params = {}) {
 
     // Give Delta Lake a brief settling pause after any write operation
     if (/^\s*(UPDATE|INSERT|MERGE|DELETE)/i.test(statement)) {
-      await sleep(300);
+      await sleep(500);
     }
     return rows;
   } catch (err) {
-    if (!/CONCURRENT/i.test(err.message || "")) {
+    if (!/CONCURRENT|DELTA_CONCURRENT|ConcurrentAppendException/i.test(err.message || "")) {
       session = null;
       client = null;
     }
@@ -87,14 +111,25 @@ async function rawQuery(statement, params = {}) {
 }
 
 async function withRetry(statement, params) {
-  for (let attempt = 0; ; attempt++) {
+  const maxRetries = 6;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await rawQuery(statement, params);
     } catch (err) {
       const isConflict = /CONCURRENT|DELTA_CONCURRENT|ConcurrentAppendException/i.test(err.message || "");
-      if (!isConflict || attempt >= 5) throw err;
-      // Exponential backoff: 300ms, 600ms, 1200ms, 2400ms, 4800ms
-      await sleep(300 * Math.pow(2, attempt));
+      if (!isConflict) throw err;
+
+      if (attempt === maxRetries - 1) {
+        throw new Error(
+          `Transaction failed after ${maxRetries} retries due to concurrent table updates. Please try again.`,
+        );
+      }
+
+      // Add randomized jitter to prevent thundering herd conflicts
+      const jitter = Math.random() * 300;
+      const delay = Math.min(400 * Math.pow(2, attempt) + jitter, 6000);
+      console.warn(`[Delta Conflict] Attempt ${attempt + 1} failed. Retrying in ${Math.round(delay)}ms...`);
+      await sleep(delay);
     }
   }
 }
@@ -119,26 +154,12 @@ const wrap = (fn) => (req, res) =>
     res.status(500).json({ error: err.message });
   });
 
-// ---------- Role handling (from the verified Auth0 login) ----------
-const MANAGERS = (process.env.MANAGER_EMAILS || "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean);
-
-app.use("/api", (req, res, next) => {
-  const user = req.oidc.user || {};
-  const email = (user.email || "").toLowerCase();
-  req.role = MANAGERS.includes(email) ? "manager" : "worker";
-  req.employee = email || user.name || "unknown";
-  next();
-});
-
-// The frontend calls this to learn who is logged in
-app.get("/api/me", (req, res) => {
-  res.json({ name: req.oidc.user.name || req.employee, email: req.employee, role: req.role });
-});
-const managerOnly = (req, res, next) =>
-  req.role === "manager" ? next() : res.status(403).json({ error: "Managers only" });
+// ---------- Image validation helper ----------
+const validImage = (s) =>
+  !s ||
+  (typeof s === "string" &&
+    s.length < 300000 &&
+    (/^data:image\/(jpeg|png|webp);base64,/.test(s) || /^https:\/\//.test(s)));
 
 // ---------- Audit log (append-only: INSERT only) ----------
 function logEvent(req, sku, action, fromLoc, toLoc, qty) {
@@ -209,7 +230,7 @@ app.get(
         ...i,
         qty_stowed: totalStowed,
         locations,
-        status: computedStatus, // Fixes frontend status.replace() crash
+        status: computedStatus,
         label: locations.length ? locations.map((l) => l.label).join(", ") : null,
       };
     });
@@ -234,7 +255,6 @@ app.get(
       { c: loc.location_code },
     );
 
-    // Add status property so shelf item lists don't crash the frontend UI
     const items = rawItems.map((i) => ({
       ...i,
       status: Number(i.qty_stowed) > 0 ? "STOWED" : "IN_TRANSIT",
@@ -288,12 +308,12 @@ app.get(
   }),
 );
 
-// Manager: register a new item (system generates SKU + barcode)
+// Manager: register a new item (system generates SKU + barcode, or accepts custom barcode)
 app.post(
   "/api/items",
   managerOnly,
   wrap(async (req, res) => {
-    const { name, description, location, image } = req.body;
+    const { name, description, location, image, barcode } = req.body;
     const quantity = parseInt(req.body.quantity, 10);
     if (!name || !location) return res.status(400).json({ error: "name and location are required" });
     if (!Number.isInteger(quantity) || quantity < 0)
@@ -302,13 +322,20 @@ app.post(
     if (!(await locationExists(location))) return res.status(400).json({ error: "Unknown location" });
 
     const sku = "SKU-" + Math.floor(100000 + Math.random() * 900000);
+    const finalBarcode = (barcode || "").trim() || sku;
+
+    const existing = await query(`SELECT sku_id FROM ${T}.inventory WHERE barcode = :b LIMIT 1`, { b: finalBarcode });
+    if (existing.length) {
+      return res.status(400).json({ error: "Barcode already exists in the system" });
+    }
 
     await query(
       `INSERT INTO ${T}.inventory
          (sku_id, barcode, name, description, updated_at, updated_by, qty_in_transit, qty_dispatched, image_url)
-       VALUES (:sku, :sku, :itemName, :descr, current_timestamp(), :emp, 0, 0, NULLIF(:img, ''))`,
+       VALUES (:sku, :barcode, :itemName, :descr, current_timestamp(), :emp, 0, 0, NULLIF(:img, ''))`,
       {
         sku,
+        barcode: finalBarcode,
         itemName: name,
         descr: description || "",
         emp: req.employee,
@@ -325,11 +352,11 @@ app.post(
     }
 
     await logEvent(req, sku, "REGISTER", "", location, quantity);
-    res.json({ sku_id: sku, barcode: sku, location });
+    res.json({ sku_id: sku, barcode: finalBarcode, location });
   }),
 );
 
-// Manager: set or replace the picture (Fixed missing equals sign)
+// Manager: set or replace the picture
 app.post(
   "/api/items/:barcode/image",
   managerOnly,
@@ -338,7 +365,7 @@ app.post(
     if (!image || !validImage(image)) return res.status(400).json({ error: "Invalid image" });
     await query(
       `UPDATE ${T}.inventory SET image_url = :img, updated_at = current_timestamp(), updated_by = :emp
-     WHERE barcode = :b`,
+       WHERE barcode = :b`,
       { img: image, emp: req.employee, b: req.params.barcode },
     );
     res.json({ ok: true });
@@ -380,14 +407,12 @@ app.post(
         return res.status(400).json({ error: "Valid target location is required for stowing" });
       }
 
-      // Decrement global in-transit
       const newInTransit = currentInTransit - n;
       await query(
         `UPDATE ${T}.inventory SET qty_in_transit = :t, updated_at = current_timestamp(), updated_by = :emp WHERE sku_id = :sku`,
         { t: newInTransit, emp: req.employee, sku: skuId },
       );
 
-      // Upsert into inventory_locations mapping table
       await query(
         `MERGE INTO ${T}.inventory_locations AS target
          USING (SELECT :sku AS sku_id, :loc AS location_code) AS source
@@ -437,7 +462,7 @@ app.post(
   }),
 );
 
-// Manager: audit history (optional ?sku=SKU-123456), with readable shelf names
+// Manager: audit history (optional ?sku=SKU-123456)
 app.get(
   "/api/audit",
   managerOnly,
@@ -462,7 +487,7 @@ app.get(
   }),
 );
 
-const path = require("path");
+// ---------- Static Assets ----------
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/src", express.static(path.join(__dirname, "public", "src")));
 app.use(express.static(path.join(__dirname, "public", "html")));
