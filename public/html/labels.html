@@ -64,9 +64,6 @@
 
         <div class="topbar-actions">
           <span id="whoami" class="who"></span>
-          <a href="index.html" class="nav-link">Scan</a>
-          <a href="labels.html" class="nav-link active">Print</a>
-          <a href="map.html" class="nav-link">Map</a>
           <button class="btn-print" type="button" onclick="window.print()">
             <svg
               viewBox="0 0 24 24"
@@ -161,6 +158,23 @@
         <span>Warehouse management · Labels</span>
       </footer>
     </main>
+        <!-- Fixed Bottom App Navigation -->
+    <nav class="bottom-nav" aria-label="Bottom Navigation">
+      <div class="bottom-nav-inner">
+        <a href="index.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          Scan
+        </a>
+        <a href="labels.html" class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </a>
+        <a href="map.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Map
+        </a>
+      </div>
+    </nav>
 
     <script>
       const $ = (id) => document.getElementById(id);

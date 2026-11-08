@@ -300,6 +300,66 @@
         margin-top: 24px;
       }
 
+            /* --- Bottom Fixed App Navigation Bar --- */
+        .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: var(--ink);
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 -10px 30px -15px rgba(2, 6, 23, 0.8);
+        z-index: 40;
+        padding: 10px 16px;
+        }
+
+        .bottom-nav-inner {
+        max-width: 420px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 12px;
+        }
+
+        .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 10px;
+        transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+        }
+
+        .bottom-nav-item svg {
+        width: 20px;
+        height: 20px;
+        }
+
+        .bottom-nav-item:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+        }
+
+        .bottom-nav-item.active {
+        color: var(--sky);
+        background: rgba(56, 189, 248, 0.1);
+        }
+
+        .bottom-nav-item.active svg {
+        stroke: var(--sky);
+        }
+
+        /* Ensure page shell has extra bottom padding so footer/content clears the fixed nav */
+        .shell {
+        padding-bottom: 100px !important;
+        }
+
       @media (max-width: 960px) {
         .map-layout {
           grid-template-columns: 1fr;
