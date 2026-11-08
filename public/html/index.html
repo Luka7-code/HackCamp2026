@@ -3,149 +3,951 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Warehouse WMS</title>
-    <link rel="stylesheet" href="../styles/style.css" />
+    <title>Scanner · LakeStock</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,4 60,19 32,34 4,19' fill='%23f97316'/%3E%3Cpolygon points='4,19 32,34 32,60 4,45' fill='%230b0f14'/%3E%3Cpolygon points='60,19 60,45 32,60 32,34' fill='%231c2430'/%3E%3Cpath d='M10 24 L17 27.7 V38 L26 42.8 V48 L10 39.4 Z' fill='%2338bdf8'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --sky: #38bdf8;
+        --green: #22c55e;
+        --orange: #f97316;
+        --ink: #0b0f14;
+        --ink-soft: #1c2430;
+        --body: #334155;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --page: #f6f9fc;
+        --panel2: #f1f5f9;
+        --accent: var(--sky);
+        --blue: #3b82f6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+      }
+
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        color: var(--body);
+        background-color: var(--page);
+        background-image: radial-gradient(
+          circle at 1px 1px,
+          rgba(15, 23, 42, 0.055) 1px,
+          transparent 0
+        );
+        background-size: 22px 22px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ---------------- Top navbar ---------------- */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--ink);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 12px 30px -22px rgba(2, 6, 23, 0.9);
+      }
+
+      .topbar-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        min-height: 68px;
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        flex: none;
+        text-decoration: none;
+        color: #fff;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        display: block;
+        filter: drop-shadow(0 3px 8px rgba(56, 189, 248, 0.28));
+      }
+
+      .brand-name {
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .brand-name .lake {
+        color: var(--sky);
+      }
+      .brand-name .stock {
+        color: var(--green);
+      }
+      .brand-name .dot {
+        color: var(--orange);
+      }
+
+      .brand-divider {
+        width: 1px;
+        height: 26px;
+        flex: none;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.85rem;
+        letter-spacing: 0.01em;
+        color: rgba(255, 255, 255, 0.52);
+      }
+
+      .crumb strong {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .topbar-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .who {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: color 0.15s ease, background 0.15s ease;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      /* ---------------- Page shell ---------------- */
+      .shell {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 30px 24px 60px;
+      }
+
+      /* Hero */
+      .page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 26px 34px;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f3faff 55%,
+          #f1fdf5 100%
+        );
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+          0 20px 40px -36px rgba(15, 23, 42, 0.5);
+      }
+
+      .hero-copy {
+        flex: 1 1 320px;
+        min-width: 0;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--orange);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 1.2rem + 1.7vw, 2.45rem);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
+        color: var(--ink);
+      }
+
+      .lede {
+        margin: 11px 0 0;
+        max-width: 58ch;
+        font-size: 0.94rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .legend {
+        flex: 0 0 auto;
+        width: min(100%, 280px);
+        padding: 6px 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(4px);
+      }
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        font-size: 0.86rem;
+      }
+
+      .legend-row + .legend-row {
+        border-top: 1px solid var(--line);
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        flex: none;
+        border-radius: 3px;
+      }
+
+      .swatch-sky {
+        background: var(--sky);
+      }
+      .swatch-green {
+        background: var(--green);
+      }
+
+      .legend-row strong {
+        color: var(--ink);
+        font-weight: 650;
+      }
+
+      .legend-row span:last-child {
+        margin-left: auto;
+        font-size: 0.74rem;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
+
+      /* ---------------- Scanner Area ---------------- */
+      .scan-layout {
+        max-width: 720px;
+        margin: 28px auto 0;
+      }
+
+      .scan-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+
+      .scan-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .scan-header h2 {
+        margin: 0;
+        font-size: 1.14rem;
+        color: var(--ink);
+      }
+
+      /* html5-qrcode overrides */
+      #reader {
+        width: 100%;
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--ink);
+        border: 1px solid var(--line);
+      }
+
+      #reader video {
+        border-radius: 14px;
+        object-fit: cover;
+      }
+
+      /* Manual Barcode Input Fallback */
+      .manual-bar {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .manual-bar input {
+        flex: 1;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--ink);
+        background: var(--page);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        outline: none;
+        transition: border-color 0.15s ease;
+      }
+
+      .manual-bar input:focus {
+        border-color: var(--sky);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #fff;
+        background: var(--ink-soft);
+        cursor: pointer;
+        transition: background 0.15s ease, transform 0.1s ease;
+      }
+
+      .btn-primary:hover {
+        background: var(--ink);
+      }
+
+      /* ---------------- Bottom Sheet & Dialogs ---------------- */
+      #sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
+        border: 1px solid var(--line);
+        box-shadow: 0 -10px 40px rgba(11, 15, 20, 0.2);
+        padding: 24px 24px 32px;
+        transform: translateY(105%);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 50;
+      }
+
+      #sheet.open {
+        transform: translateY(0);
+      }
+
+      .sheet-handle {
+        width: 38px;
+        height: 4px;
+        background: var(--line);
+        border-radius: 99px;
+        margin: 0 auto 16px;
+      }
+
+      #sheetClose {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: var(--panel2);
+        border: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 1rem;
+        color: var(--muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #sheetClose:hover {
+        color: var(--ink);
+      }
+
+      .sheet-top {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .sheet-img {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+        background: var(--panel2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        flex-shrink: 0;
+        overflow: hidden;
+      }
+
+      .sheet-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .sheet-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .sheet-name {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ink);
+        margin: 2px 0 4px;
+      }
+
+      .sheet-meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .sheet-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        background: var(--panel2);
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-top: 12px;
+      }
+
+      .sheet-stats strong {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 800;
+      }
+
+      .qty {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .qty-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #fff;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .qty-input {
+        width: 64px;
+        height: 38px;
+        text-align: center;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      #sheetLoc {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        font-size: 0.9rem;
+        margin-top: 6px;
+        background: #fff;
+      }
+
+      /* Shelf inspector list inside sheet */
+      .shelf-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px;
+        background: var(--panel2);
+        border-radius: 10px;
+        margin-top: 8px;
+        cursor: pointer;
+      }
+
+      .shelf-row-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .shelf-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        overflow: hidden;
+      }
+
+      .shelf-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .shelf-row-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .shelf-row-sku {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      /* Toast Notification */
+      #toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: var(--ink);
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 100;
+        pointer-events: none;
+      }
+      #toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      #toast.error {
+        background: #ef4444;
+      }
+
+      /* Footer */
+      .foot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 46px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .foot .brand-name {
+        font-size: 0.9rem;
+      }
+
+      .foot-mark {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+
+      .foot span:last-child {
+        margin-left: auto;
+      }
+
+            /* --- Bottom Fixed App Navigation Bar --- */
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: var(--ink);
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 -10px 30px -15px rgba(2, 6, 23, 0.8);
+        z-index: 40;
+        padding: 10px 16px;
+      }
+
+      .bottom-nav-inner {
+        max-width: 420px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 10px;
+        transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+      }
+
+      .bottom-nav-item svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .bottom-nav-item:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .bottom-nav-item.active {
+        color: var(--sky);
+        background: rgba(56, 189, 248, 0.1);
+      }
+
+      .bottom-nav-item.active svg {
+        stroke: var(--sky);
+      }
+
+      /* Ensure page shell has extra bottom padding so footer/content clears the fixed nav */
+      .shell {
+        padding-bottom: 100px !important;
+      }
+
+      @media (max-width: 720px) {
+        .topbar-inner {
+          padding: 11px 16px;
+          flex-wrap: wrap;
+        }
+        .brand-divider, .crumb {
+          display: none;
+        }
+      }
+    </style>
     <link rel="stylesheet" href="/predictive.css" />
-    <script type="module" src="/src/nav-bar.js"></script>
   </head>
   <body>
-    <div id="toast"></div>
-    <main>
-      <div id="reader"></div>
+    <!-- Logo mark: isometric crate with the sky-blue L -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="logo-mark" viewBox="0 0 64 64">
+        <polygon points="32,4 60,19 32,34 4,19" fill="#f97316" />
+        <polygon points="4,19 32,34 32,60 4,45" fill="#0b0f14" />
+        <polygon points="60,19 60,45 32,60 32,34" fill="#1c2430" />
+        <g transform="matrix(1,0.5357,0,1,4,19)">
+          <path d="M6 6 H13 V19 H23 V25 H6 Z" fill="#38bdf8" />
+        </g>
+      </symbol>
+    </svg>
 
-      <nav id="tabs">
-        <button data-tab="scan" class="active">Scan</button>
-        <button data-tab="predictive" class="mgr">Predictive AI</button>
-      </nav>
+    <nav class="topbar" aria-label="Main">
+      <div class="topbar-inner">
+        <a class="brand" href="index.html" aria-label="LakeStock home">
+          <svg class="brand-mark" aria-hidden="true">
+            <use href="#logo-mark" />
+          </svg>
+          <span class="brand-name"
+            ><span class="lake">Lake</span><span class="stock">Stock</span
+            ><span class="dot">.</span></span
+          >
+        </a>
 
-      <!-- PREDICTIVE AI TAB (manager) -->
-      <section id="tab-predictive" class="card tab" hidden>
-        <div class="pred-header">
-          <div>
-            <h2>Predictive AI</h2>
-            <p class="hint">Demand forecasts, stockout risk, restocking recommendations and what-if simulation.</p>
-          </div>
-          <span id="predUpdated" class="pred-updated"></span>
+        <span class="brand-divider" aria-hidden="true"></span>
+
+        <span class="crumb">Warehouse <strong>Scanner</strong></span>
+
+        <div class="topbar-actions">
+          <span id="whoami" class="who"></span>
+          <a href="/logout" class="nav-link" style="color: #fca5a5;">Log out</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="shell">
+      <section class="page-head">
+        <div class="hero-copy">
+          <p class="eyebrow">Warehouse · Real-Time Scanning</p>
+          <h1>Barcode terminal</h1>
+          <p class="lede">
+            Hold item SKUs or shelf location labels up to your camera to scan, stow, or dispatch inventory live from Databricks.
+          </p>
         </div>
 
-        <div id="predNote" class="pred-note">Forecasts combine recent demand history, current inventory, supplier lead times and safety stock.</div>
-        <div id="predSummary" class="pred-kpis"></div>
-
-        <div class="pred-panel">
-          <div class="pred-panel-head">
-            <div>
-              <h3>Demand forecast</h3>
-              <p class="hint">Predicted units per day based on recent demand and current inventory.</p>
-            </div>
-            <div class="pred-controls">
-              <select id="predSku" aria-label="Select a product"></select>
-              <div class="seg" id="predHorizon" role="group" aria-label="Forecast horizon">
-                <button data-h="7">7 days</button>
-                <button data-h="14">14 days</button>
-                <button data-h="30" class="active">30 days</button>
-              </div>
-            </div>
+        <aside class="legend" aria-label="Scanner instructions">
+          <div class="legend-row">
+            <i class="swatch swatch-sky"></i>
+            <strong>Step 1: Scan Item</strong>
+            <span>Inspect SKU details</span>
           </div>
-          <div id="predMetrics" class="pred-metrics"></div>
-          <div class="pred-chart-wrap">
-            <canvas id="predChart" role="img" aria-label="Observed demand history and predicted demand"></canvas>
+          <div class="legend-row">
+            <i class="swatch swatch-green"></i>
+            <strong>Step 2: Scan Shelf</strong>
+            <span>Quick Stow/Dispatch</span>
           </div>
-          <div class="pred-chart-foot">
-            <span class="hint">Solid line = observed history · dashed line = forecast</span>
-            <span id="predChartStatus" class="pred-chart-status" aria-live="polite"></span>
-            <button id="predTableBtn" class="link-btn" type="button">Show data table</button>
-          </div>
-          <div id="predTableWrap" class="scroll" hidden></div>
-        </div>
-
-        <div class="pred-two-col">
-          <div class="pred-panel">
-            <div class="pred-panel-head">
-              <h3>Stockout risk</h3>
-              <span class="hint" id="predRiskCount"></span>
-            </div>
-            <div id="predStockouts" class="scroll"></div>
-          </div>
-          <div class="pred-panel">
-            <div class="pred-panel-head">
-              <h3>Overstock</h3>
-              <span class="hint" id="predOverCount"></span>
-            </div>
-            <div id="predOverstock" class="scroll"></div>
-          </div>
-        </div>
-
-        <div class="pred-panel">
-          <div class="pred-panel-head">
-            <h3>Smart restocking</h3>
-            <span class="hint">Recommendations only — inventory is never changed automatically.</span>
-          </div>
-          <div id="predRestock" class="scroll"></div>
-          <div class="pred-actions">
-            <button id="predRunBtn" class="secondary" type="button">Save forecast snapshot</button>
-            <span class="hint" id="predRunNote"></span>
-          </div>
-        </div>
-
-        <div class="pred-panel">
-          <div class="pred-panel-head">
-            <h3>Supplier &amp; safety settings</h3>
-            <span class="hint">Defaults are configurable; manager overrides are stored per product.</span>
-          </div>
-          <div id="predSettings" class="scroll"></div>
-        </div>
-
-        <div class="pred-panel">
-          <div class="pred-panel-head">
-            <h3>What-if simulation</h3>
-            <span class="hint">Recalculates stockout risk and reorder quantities without changing any data.</span>
-          </div>
-          <div class="pred-sim-controls">
-            <label>Demand change
-              <select id="simDemand">
-                <option value="30">+30%</option>
-                <option value="-20">−20%</option>
-                <option value="0">No change</option>
-                <option value="custom">Custom…</option>
-              </select>
-            </label>
-            <label id="simCustomWrap" hidden>Custom % <input id="simCustom" type="number" value="10" min="-90" max="200" step="1" /></label>
-            <label>Supplier delay
-              <select id="simLead">
-                <option value="0">No delay</option>
-                <option value="3">+3 days</option>
-                <option value="7">+7 days</option>
-                <option value="-2">−2 days</option>
-              </select>
-            </label>
-            <button id="simRunBtn" type="button">Run simulation</button>
-            <button id="simResetBtn" class="secondary" type="button">Reset</button>
-          </div>
-          <div id="simResult" class="pred-sim-result"></div>
-        </div>
+        </aside>
       </section>
 
-      <site-navbar></site-navbar>
+      <div class="scan-layout">
+        <section class="scan-card">
+          <div class="scan-header">
+            <h2>Live Camera Scanner</h2>
+            <span style="font-size: 0.8rem; color: var(--green); font-weight: 700;">● Active</span>
+          </div>
+
+          <!-- Camera scanner viewport -->
+          <div id="reader"></div>
+
+          <!-- Manual Code Fallback -->
+          <div class="manual-bar">
+            <input type="text" id="manual" placeholder="Or enter barcode / SKU manually..." />
+            <button type="button" id="manualBtn" class="btn-primary">Submit</button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="foot">
+        <svg class="foot-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+        <span class="brand-name"
+          ><span class="lake">Lake</span><span class="stock">Stock</span
+          ><span class="dot">.</span></span
+        >
+        <span>Warehouse management · Barcode Scanner</span>
+      </footer>
     </main>
+
+    <!-- PREDICTIVE AI (manager) -->
+    <section id="tab-predictive" class="card tab" hidden>
+      <div class="pred-header">
+        <div>
+          <h2>Predictive AI</h2>
+          <p class="hint">Demand forecasts, stockout risk, restocking recommendations and what-if simulation.</p>
+        </div>
+        <span id="predUpdated" class="pred-updated"></span>
+      </div>
+
+      <div id="predNote" class="pred-note">Forecasts combine recent demand history, current inventory, supplier lead times and safety stock.</div>
+      <div id="predSummary" class="pred-kpis"></div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <div>
+            <h3>Demand forecast</h3>
+            <p class="hint">Predicted units per day based on recent demand and current inventory.</p>
+          </div>
+          <div class="pred-controls">
+            <select id="predSku" aria-label="Select a product"></select>
+            <div class="seg" id="predHorizon" role="group" aria-label="Forecast horizon">
+              <button data-h="7">7 days</button>
+              <button data-h="14">14 days</button>
+              <button data-h="30" class="active">30 days</button>
+            </div>
+          </div>
+        </div>
+        <div id="predMetrics" class="pred-metrics"></div>
+        <div class="pred-chart-wrap">
+          <canvas id="predChart" role="img" aria-label="Observed demand history and predicted demand"></canvas>
+        </div>
+        <div class="pred-chart-foot">
+          <span class="hint">Solid line = observed history · dashed line = forecast</span>
+          <span id="predChartStatus" class="pred-chart-status" aria-live="polite"></span>
+          <button id="predTableBtn" class="link-btn" type="button">Show data table</button>
+        </div>
+        <div id="predTableWrap" class="scroll" hidden></div>
+      </div>
+
+      <div class="pred-two-col">
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Stockout risk</h3>
+            <span class="hint" id="predRiskCount"></span>
+          </div>
+          <div id="predStockouts" class="scroll"></div>
+        </div>
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Overstock</h3>
+            <span class="hint" id="predOverCount"></span>
+          </div>
+          <div id="predOverstock" class="scroll"></div>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Smart restocking</h3>
+          <span class="hint">Recommendations only — inventory is never changed automatically.</span>
+        </div>
+        <div id="predRestock" class="scroll"></div>
+        <div class="pred-actions">
+          <button id="predRunBtn" class="secondary" type="button">Save forecast snapshot</button>
+          <span class="hint" id="predRunNote"></span>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Supplier &amp; safety settings</h3>
+          <span class="hint">Defaults are configurable; manager overrides are stored per product.</span>
+        </div>
+        <div id="predSettings" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>What-if simulation</h3>
+          <span class="hint">Recalculates stockout risk and reorder quantities without changing any data.</span>
+        </div>
+        <div class="pred-sim-controls">
+          <label>Demand change
+            <select id="simDemand">
+              <option value="30">+30%</option>
+              <option value="-20">−20%</option>
+              <option value="0">No change</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </label>
+          <label id="simCustomWrap" hidden>Custom % <input id="simCustom" type="number" value="10" min="-90" max="200" step="1" /></label>
+          <label>Supplier delay
+            <select id="simLead">
+              <option value="0">No delay</option>
+              <option value="3">+3 days</option>
+              <option value="7">+7 days</option>
+              <option value="-2">−2 days</option>
+            </select>
+          </label>
+          <button id="simRunBtn" type="button">Run simulation</button>
+          <button id="simResetBtn" class="secondary" type="button">Reset</button>
+        </div>
+        <div id="simResult" class="pred-sim-result"></div>
+      </div>
+    </section>
+
+    <!-- Popup Bottom Sheet for Scanned Items & Shelves -->
     <div id="sheet" aria-live="polite">
       <div class="sheet-handle"></div>
       <button id="sheetClose" aria-label="Close">✕</button>
       <div id="sheetBody"></div>
     </div>
+
+    <!-- Toast Popup Notifications -->
+    <div id="toast"></div>
+    <!-- Fixed Bottom App Navigation -->
+    <nav class="bottom-nav" aria-label="Bottom Navigation">
+      <div class="bottom-nav-inner">
+        <a href="index.html" class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          Scan
+        </a>
+        <a href="labels.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </a>
+        <a href="map.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Map
+        </a>
+        <button
+          type="button"
+          id="predNavBtn"
+          class="bottom-nav-item mgr"
+          data-tab="predictive"
+          style="background: none; border: 0; cursor: pointer; font: inherit"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><polyline points="4 15 9 10 13 14 20 5"/></svg>
+          Insights
+        </button>
+      </div>
+    </nav>
+
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/src/predictive.js"></script>
     <script>
-      // app.js exposes showTab but no longer renders the tab bar itself.
-      document.querySelectorAll("#tabs button").forEach((button) => {
+      (function () {
+        const button = document.getElementById("predNavBtn");
+        const panel = document.getElementById("tab-predictive");
+        if (!button || !panel) return;
+        const scanLink = document.querySelector('.bottom-nav a[href="index.html"]');
+
+        function setOpen(open) {
+          panel.hidden = !open;
+          button.classList.toggle("active", open);
+          if (scanLink) scanLink.classList.toggle("active", !open);
+          if (typeof window.showTab === "function") window.showTab(open ? "predictive" : "scan");
+        }
+
         button.addEventListener("click", () => {
-          document
-            .querySelectorAll("#tabs button")
-            .forEach((item) => item.classList.toggle("active", item === button));
-          if (typeof window.showTab === "function") window.showTab(button.dataset.tab);
+          const open = panel.hidden;
+          setOpen(open);
+          if (!open && location.hash === "#predictive") {
+            history.replaceState(null, "", location.pathname + location.search);
+          }
         });
-      });
+
+        // Other pages link here with #predictive, since this is the only page
+        // that hosts the dashboard.
+        if (location.hash === "#predictive") {
+          fetch("/api/me", { headers: { "Content-Type": "application/json" } })
+            .then((res) => res.json())
+            .then((me) => {
+              history.replaceState(null, "", location.pathname + location.search);
+              if (me && me.role === "manager") button.click();
+            })
+            .catch(() => {});
+        }
+      })();
     </script>
   </body>
 </html>

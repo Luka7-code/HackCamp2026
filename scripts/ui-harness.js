@@ -65,9 +65,11 @@ app.get("/api/items", async (req, res, next) => {
   try {
     res.json(
       await query(
-        `SELECT i.*, l.label, l.map_row, l.map_col
+        `SELECT i.sku_id, i.barcode, i.name, i.description, i.image_url, i.qty_in_transit,
+                il.qty_stowed, l.location_code, l.label
          FROM workspace.wms.inventory i
-         LEFT JOIN workspace.wms.locations l ON l.location_code = i.location_code
+         LEFT JOIN workspace.wms.inventory_locations il ON il.sku_id = i.sku_id AND il.qty_stowed > 0
+         LEFT JOIN workspace.wms.locations l ON l.location_code = il.location_code
          ORDER BY i.name`,
       ),
     );
@@ -95,7 +97,7 @@ app.get("/", (req, res) => {
         document.body.appendChild(banner);
       });
       setTimeout(() => {
-        const button = document.querySelector('#tabs button[data-tab="predictive"]');
+        const button = document.querySelector('[data-tab="predictive"]');
         if (button) button.click();
       }, 500);
     </script>`;
@@ -104,6 +106,7 @@ app.get("/", (req, res) => {
 
 app.use(express.static(PUBLIC));
 app.use("/src", express.static(path.join(PUBLIC, "src")));
+app.use(express.static(path.join(PUBLIC, "html")));
 
 const port = process.env.UI_HARNESS_PORT || 8098;
 app.listen(port, () => console.log(`UI harness on http://localhost:${port}`));

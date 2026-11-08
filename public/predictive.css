@@ -355,25 +355,16 @@
   }
 }
 
-/* index.html hosts the full-screen scanner, so the dashboard overlays it. */
-#tabs {
-  position: relative;
-  z-index: 30;
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  background: rgba(11, 18, 32, 0.72);
-  backdrop-filter: blur(8px);
-}
+/* index.html renders the dashboard as an overlay sitting below the page's
+   top bar (z 20) and above the scan content. */
 #tab-predictive:not([hidden]) {
   position: fixed;
-  top: 56px;
-  right: 0;
-  bottom: 78px;
-  left: 0;
-  z-index: 20;
+  inset: 0;
+  z-index: 15;
   margin: 0;
+  padding: 88px 24px 110px;
   border-radius: 0;
+  background: #f6f9fc;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -420,16 +411,6 @@
 #tab-predictive button.secondary {
   background: #8a93a6;
   color: #fff;
-}
-#tabs button {
-  background: #e8ecf5;
-  color: #1d2433;
-  border: 1px solid #c5cad6;
-}
-#tabs button.active {
-  background: #2f6fed;
-  color: #fff;
-  border-color: #2f6fed;
 }
 body.worker .mgr {
   display: none;

@@ -40,6 +40,28 @@ async function getSession() {
   return session;
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// True Mutex Lock to guarantee absolute 1-by-1 query serialization across the app
+let mutex = Promise.resolve();
+
+function lock(fn) {
+  let release;
+  const nextMutex = new Promise((resolve) => {
+    release = resolve;
+  });
+  const currentMutex = mutex;
+  mutex = nextMutex;
+
+  return currentMutex.then(async () => {
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  });
+}
+
 async function rawQuery(statement, params = {}) {
   try {
     const s = await getSession();
@@ -49,6 +71,11 @@ async function rawQuery(statement, params = {}) {
     });
     const rows = await op.fetchAll();
     await op.close();
+
+    // Give Delta Lake a brief settling pause after any write operation
+    if (/^\s*(UPDATE|INSERT|MERGE|DELETE)/i.test(statement)) {
+      await sleep(300);
+    }
     return rows;
   } catch (err) {
     if (!/CONCURRENT/i.test(err.message || "")) {
@@ -59,27 +86,21 @@ async function rawQuery(statement, params = {}) {
   }
 }
 
-let writeQueue = Promise.resolve();
-const isWrite = (s) => /^\s*(UPDATE|INSERT|MERGE|DELETE)/i.test(s);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 async function withRetry(statement, params) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await rawQuery(statement, params);
     } catch (err) {
-      const conflict = /CONCURRENT|DELTA_CONCURRENT/i.test(err.message || "");
-      if (!conflict || attempt >= 4) throw err;
-      await sleep(150 * (attempt + 1)); // wait a little, then try again
+      const isConflict = /CONCURRENT|DELTA_CONCURRENT|ConcurrentAppendException/i.test(err.message || "");
+      if (!isConflict || attempt >= 5) throw err;
+      // Exponential backoff: 300ms, 600ms, 1200ms, 2400ms, 4800ms
+      await sleep(300 * Math.pow(2, attempt));
     }
   }
 }
 
 function query(statement, params = {}) {
-  if (!isWrite(statement)) return withRetry(statement, params); // reads run freely
-  const p = writeQueue.then(() => withRetry(statement, params));
-  writeQueue = p.catch(() => {}); // one write at a time
-  return p;
+  return lock(() => withRetry(statement, params));
 }
 
 let locCache = null;
@@ -160,52 +181,113 @@ app.get(
   }),
 );
 
-// All items, joined with their current shelf
+// 1. Get all items with combined locations and computed status for the UI
 app.get(
   "/api/items",
   wrap(async (req, res) => {
-    res.json(
-      await query(
-        `SELECT i.*, l.label, l.map_row, l.map_col
-     FROM ${T}.inventory i
-     LEFT JOIN ${T}.locations l ON l.location_code = i.location_code
-     ORDER BY i.name`,
-      ),
+    const items = await query(`SELECT * FROM ${T}.inventory ORDER BY name`);
+    const locRows = await query(
+      `SELECT il.*, l.label FROM ${T}.inventory_locations il
+       JOIN ${T}.locations l ON l.location_code = il.location_code
+       WHERE il.qty_stowed > 0`,
     );
+
+    const locMap = new Map();
+    locRows.forEach((r) => {
+      if (!locMap.has(r.sku_id)) locMap.set(r.sku_id, []);
+      locMap.get(r.sku_id).push({
+        location_code: r.location_code,
+        label: r.label,
+        qty_stowed: Number(r.qty_stowed),
+      });
+    });
+
+    const result = items.map((i) => {
+      const locations = locMap.get(i.sku_id) || [];
+      const totalStowed = locations.reduce((sum, l) => sum + l.qty_stowed, 0);
+      const computedStatus =
+        totalStowed > 0 ? "STOWED" : Number(i.qty_in_transit || 0) > 0 ? "IN_TRANSIT" : "DISPATCHED";
+
+      return {
+        ...i,
+        qty_stowed: totalStowed,
+        locations,
+        status: computedStatus, // Fixes frontend status.replace() crash
+        label: locations.length ? locations.map((l) => l.label).join(", ") : null,
+      };
+    });
+
+    res.json(result);
   }),
 );
 
-// Scan an ITEM barcode: look it up, log a SCAN event
-app.get(
-  "/api/scan/:barcode",
-  wrap(async (req, res) => {
-    const rows = await query(
-      `SELECT i.*, l.label, l.map_row, l.map_col
-     FROM ${T}.inventory i
-     LEFT JOIN ${T}.locations l ON l.location_code = i.location_code
-     WHERE i.barcode = :b`,
-      { b: req.params.barcode },
-    );
-    if (!rows.length) return res.status(404).json({ error: "Unknown barcode" });
-    const item = rows[0];
-    await logEvent(req, item.sku_id, "SCAN", item.location_code, item.location_code);
-    res.json(item);
-  }),
-);
-
-// Scan a SHELF barcode: shows the shelf plus every item on it
+// 3. Scan a SHELF barcode: shows shelf details plus items stowed on it
 app.get(
   "/api/shelf/:barcode",
   wrap(async (req, res) => {
     const locs = await getLocations();
     const loc = locs.find((l) => l.barcode === req.params.barcode || l.location_code === req.params.barcode);
     if (!loc) return res.status(404).json({ error: "Unknown shelf" });
-    const items = await query(
-      `SELECT sku_id, barcode, name, description, status, quantity, qty_stowed, qty_in_transit, image_url
-     FROM ${T}.inventory WHERE location_code = :c AND COALESCE(qty_stowed, 0) > 0`,
+
+    const rawItems = await query(
+      `SELECT i.sku_id, i.barcode, i.name, i.description, i.image_url, i.qty_in_transit, il.qty_stowed
+       FROM ${T}.inventory_locations il
+       JOIN ${T}.inventory i ON i.sku_id = il.sku_id
+       WHERE il.location_code = :c AND il.qty_stowed > 0`,
       { c: loc.location_code },
     );
+
+    // Add status property so shelf item lists don't crash the frontend UI
+    const items = rawItems.map((i) => ({
+      ...i,
+      status: Number(i.qty_stowed) > 0 ? "STOWED" : "IN_TRANSIT",
+    }));
+
     res.json({ location: loc, items });
+  }),
+);
+
+// 2. Scan an ITEM barcode: returns SKU details, global counts, and stowed locations
+app.get(
+  "/api/scan/:barcode",
+  wrap(async (req, res) => {
+    const items = await query(`SELECT * FROM ${T}.inventory WHERE barcode = :b OR sku_id = :b LIMIT 1`, {
+      b: req.params.barcode,
+    });
+    if (!items.length) return res.status(404).json({ error: "Unknown barcode" });
+    const base = items[0];
+
+    const locRows = await query(
+      `SELECT il.*, l.label FROM ${T}.inventory_locations il
+       JOIN ${T}.locations l ON l.location_code = il.location_code
+       WHERE il.sku_id = :sku AND il.qty_stowed > 0`,
+      { sku: base.sku_id },
+    );
+
+    const locations = locRows.map((r) => ({
+      location_code: r.location_code,
+      label: r.label,
+      qty_stowed: Number(r.qty_stowed),
+    }));
+
+    const totalStowed = locations.reduce((sum, l) => sum + l.qty_stowed, 0);
+
+    const responseItem = {
+      sku_id: base.sku_id,
+      barcode: base.barcode,
+      name: base.name,
+      description: base.description,
+      image_url: base.image_url,
+      qty_stowed: totalStowed,
+      qty_in_transit: Number(base.qty_in_transit || 0),
+      qty_dispatched: Number(base.qty_dispatched || 0),
+      locations: locations,
+      label: locations.length ? locations[0].label : null,
+      location_code: locations.length ? locations[0].location_code : null,
+    };
+
+    await logEvent(req, base.sku_id, "SCAN", "", "");
+    res.json(responseItem);
   }),
 );
 
@@ -223,28 +305,34 @@ app.post(
     if (!(await locationExists(location))) return res.status(400).json({ error: "Unknown location" });
 
     const sku = "SKU-" + Math.floor(100000 + Math.random() * 900000);
+
     await query(
       `INSERT INTO ${T}.inventory
-         (sku_id, barcode, name, description, status, location_code, assigned_location,
-          updated_at, updated_by, quantity, qty_stowed, qty_in_transit, qty_dispatched, image_url)
-       VALUES (:sku, :sku, :itemName, :descr, 'STOWED', :loc, :loc,
-               current_timestamp(), :emp, :qty, :qty, 0, 0, NULLIF(:img, ''))`,
+         (sku_id, barcode, name, description, updated_at, updated_by, qty_in_transit, qty_dispatched, image_url)
+       VALUES (:sku, :sku, :itemName, :descr, current_timestamp(), :emp, 0, 0, NULLIF(:img, ''))`,
       {
         sku,
         itemName: name,
         descr: description || "",
-        loc: location,
         emp: req.employee,
-        qty: quantity,
         img: image || "",
       },
     );
+
+    if (quantity > 0) {
+      await query(
+        `INSERT INTO ${T}.inventory_locations (sku_id, location_code, qty_stowed, updated_at)
+         VALUES (:sku, :loc, :qty, current_timestamp())`,
+        { sku, loc: location, qty: quantity },
+      );
+    }
+
     await logEvent(req, sku, "REGISTER", "", location, quantity);
     res.json({ sku_id: sku, barcode: sku, location });
   }),
 );
 
-// Manager: set or replace the picture
+// Manager: set or replace the picture (Fixed missing equals sign)
 app.post(
   "/api/items/:barcode/image",
   managerOnly,
@@ -260,107 +348,94 @@ app.post(
   }),
 );
 
-// Worker or manager: change status (STOWED / IN_TRANSIT / DISPATCHED)
-// Worker or manager: change status (STOWED / IN_TRANSIT / DISPATCHED)
+// 4. Status update (IN_TRANSIT / STOWED / DISPATCHED)
 app.post(
   "/api/items/:barcode/status",
   wrap(async (req, res) => {
     const { status, location } = req.body;
     const n = parseInt(req.body.amount, 10);
-    const actions = { STOWED: "STOW", IN_TRANSIT: "PICK", DISPATCHED: "DISPATCH" };
+    const actions = { STOWED: "STOW", IN_TRANSIT: "RECEIVE", DISPATCHED: "DISPATCH" };
 
     if (!actions[status]) return res.status(400).json({ error: "Invalid status" });
-    if (!Number.isInteger(n) || n < 1 || n > 10000)
-      return res.status(400).json({ error: "Pick an amount of 1 or more" });
-    if (location && !(await locationExists(location))) return res.status(400).json({ error: "Unknown location" });
+    if (!Number.isInteger(n) || n < 1) return res.status(400).json({ error: "Pick an amount of 1 or more" });
 
-    const rows = await query(
-      `SELECT sku_id, location_code, assigned_location,
-            COALESCE(qty_stowed, 0) AS s, COALESCE(qty_in_transit, 0) AS t, COALESCE(qty_dispatched, 0) AS d
-     FROM ${T}.inventory WHERE barcode = :b`,
-      { b: req.params.barcode },
-    );
-    if (!rows.length) return res.status(404).json({ error: "Unknown barcode" });
-
-    const r = rows[0];
-    const s = Number(r.s),
-      t = Number(r.t),
-      d = Number(r.d);
-    let ns = s,
-      nt = t,
-      nd = d,
-      shelf = r.location_code || r.assigned_location;
+    const items = await query(`SELECT * FROM ${T}.inventory WHERE barcode = :b OR sku_id = :b LIMIT 1`, {
+      b: req.params.barcode,
+    });
+    if (!items.length) return res.status(404).json({ error: "Unknown barcode" });
+    const base = items[0];
+    const skuId = base.sku_id;
 
     if (status === "IN_TRANSIT") {
-      if (n > s) return res.status(400).json({ error: `Only ${s} available on the shelf` });
-      ns = s - n;
-      nt = t + n;
+      const newInTransit = Number(base.qty_in_transit || 0) + n;
+      await query(
+        `UPDATE ${T}.inventory SET qty_in_transit = :t, updated_at = current_timestamp(), updated_by = :emp WHERE sku_id = :sku`,
+        { t: newInTransit, emp: req.employee, sku: skuId },
+      );
+    } else if (status === "STOWED") {
+      const currentInTransit = Number(base.qty_in_transit || 0);
+      if (n > currentInTransit) {
+        return res
+          .status(400)
+          .json({ error: `Cannot stow ${n} units. Only ${currentInTransit} available in-transit.` });
+      }
+      if (!location || !(await locationExists(location))) {
+        return res.status(400).json({ error: "Valid target location is required for stowing" });
+      }
+
+      // Decrement global in-transit
+      const newInTransit = currentInTransit - n;
+      await query(
+        `UPDATE ${T}.inventory SET qty_in_transit = :t, updated_at = current_timestamp(), updated_by = :emp WHERE sku_id = :sku`,
+        { t: newInTransit, emp: req.employee, sku: skuId },
+      );
+
+      // Upsert into inventory_locations mapping table
+      await query(
+        `MERGE INTO ${T}.inventory_locations AS target
+         USING (SELECT :sku AS sku_id, :loc AS location_code) AS source
+         ON target.sku_id = source.sku_id AND target.location_code = source.location_code
+         WHEN MATCHED THEN UPDATE SET qty_stowed = qty_stowed + :n, updated_at = current_timestamp()
+         WHEN NOT MATCHED THEN INSERT (sku_id, location_code, qty_stowed, updated_at) VALUES (:sku, :loc, :n, current_timestamp())`,
+        { sku: skuId, loc: location, n: n },
+      );
     } else if (status === "DISPATCHED") {
-      if (n > s + t) return res.status(400).json({ error: `Only ${s + t} available total` });
-      const fromT = Math.min(n, t);
-      nt = t - fromT;
-      ns = s - (n - fromT);
-      nd = d + n;
-    } else {
-      const target = location || r.assigned_location;
-      nt = Math.max(0, t - Math.min(n, t));
-      ns = s + n;
-      shelf = target;
+      if (!location) {
+        return res.status(400).json({ error: "Please select a location to dispatch from" });
+      }
+
+      const locRows = await query(
+        `SELECT qty_stowed FROM ${T}.inventory_locations WHERE sku_id = :sku AND location_code = :loc`,
+        { sku: skuId, loc: location },
+      );
+      const currentStowed = locRows.length ? Number(locRows[0].qty_stowed || 0) : 0;
+
+      if (n > currentStowed) {
+        return res.status(400).json({ error: `Only ${currentStowed} units stowed at ${location}` });
+      }
+
+      const newStowed = currentStowed - n;
+      const newDispatched = Number(base.qty_dispatched || 0) + n;
+
+      await query(
+        `UPDATE ${T}.inventory SET qty_dispatched = :disp, updated_at = current_timestamp(), updated_by = :emp WHERE sku_id = :sku`,
+        { disp: newDispatched, emp: req.employee, sku: skuId },
+      );
+
+      if (newStowed === 0) {
+        await query(`DELETE FROM ${T}.inventory_locations WHERE sku_id = :sku AND location_code = :loc`, {
+          sku: skuId,
+          loc: location,
+        });
+      } else {
+        await query(
+          `UPDATE ${T}.inventory_locations SET qty_stowed = :s, updated_at = current_timestamp() WHERE sku_id = :sku AND location_code = :loc`,
+          { s: newStowed, sku: skuId, loc: location },
+        );
+      }
     }
 
-    const newLoc = ns > 0 ? shelf : null;
-    const newStatus = ns > 0 ? "STOWED" : nt > 0 ? "IN_TRANSIT" : "DISPATCHED";
-
-    // Simplified update query without strict optimistic locking locks
-    await query(
-      `UPDATE ${T}.inventory
-       SET qty_stowed = :ns, qty_in_transit = :nt, qty_dispatched = :nd, quantity = :q,
-           status = :st, location_code = NULLIF(:loc, ''),
-           updated_at = current_timestamp(), updated_by = :emp
-       WHERE barcode = :b`,
-      { ns, nt, nd, q: ns + nt, st: newStatus, loc: newLoc || "", emp: req.employee, b: req.params.barcode },
-    );
-
-    logEvent(req, r.sku_id, actions[status], r.location_code, newLoc || shelf, n).catch((e) =>
-      console.error("audit insert failed:", e.message),
-    );
-
-    res.json({
-      ok: true,
-      status: newStatus,
-      location_code: newLoc,
-      quantity: ns + nt,
-      qty_stowed: ns,
-      qty_in_transit: nt,
-      qty_dispatched: nd,
-    });
-  }),
-);
-// ... rest of response handling
-
-// Manager: reassign an item's home bin
-app.patch(
-  "/api/items/:barcode/location",
-  managerOnly,
-  wrap(async (req, res) => {
-    const { location } = req.body;
-    if (!location) return res.status(400).json({ error: "location is required" });
-    if (!(await locationExists(location))) {
-      return res.status(400).json({ error: "Unknown location" });
-    }
-    const rows = await query(`SELECT * FROM ${T}.inventory WHERE barcode = :b`, { b: req.params.barcode });
-    if (!rows.length) return res.status(404).json({ error: "Unknown barcode" });
-    const item = rows[0];
-
-    await query(
-      `UPDATE ${T}.inventory
-     SET assigned_location = :loc,
-         location_code = CASE WHEN status = 'STOWED' THEN :loc ELSE location_code END,
-         updated_at = current_timestamp(), updated_by = :emp
-     WHERE barcode = :b`,
-      { loc: location, emp: req.employee, b: req.params.barcode },
-    );
-    await logEvent(req, item.sku_id, "REASSIGN", item.assigned_location, location);
+    logEvent(req, skuId, actions[status], location, location, n).catch(() => {});
     res.json({ ok: true });
   }),
 );

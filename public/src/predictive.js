@@ -604,7 +604,7 @@
 
   // ---------- events ----------
 
-  const tabButton = document.querySelector('#tabs button[data-tab="predictive"]');
+  const tabButton = document.querySelector('[data-tab="predictive"]');
   if (tabButton) {
     tabButton.addEventListener("click", () => {
       if (!state.dashboard || Date.now() - state.loadedAt > 5 * 60 * 1000) loadDashboard();
