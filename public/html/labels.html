@@ -10,6 +10,28 @@
     />
     <link rel="stylesheet" href="../styles/labels.css" />
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <style>
+      .who {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: color 0.15s ease, background 0.15s ease;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+    </style>
   </head>
   <body>
     <!-- Logo mark: isometric crate with the sky-blue L -->
@@ -26,7 +48,7 @@
 
     <nav class="topbar" aria-label="Main">
       <div class="topbar-inner">
-        <a class="brand" href="/" aria-label="LakeStock home">
+        <a class="brand" href="index.html" aria-label="LakeStock home">
           <svg class="brand-mark" aria-hidden="true">
             <use href="#logo-mark" />
           </svg>
@@ -41,6 +63,10 @@
         <span class="crumb">Warehouse <strong>Labels</strong></span>
 
         <div class="topbar-actions">
+          <span id="whoami" class="who"></span>
+          <a href="index.html" class="nav-link">Scan</a>
+          <a href="labels.html" class="nav-link active">Print</a>
+          <a href="map.html" class="nav-link">Map</a>
           <button class="btn-print" type="button" onclick="window.print()">
             <svg
               viewBox="0 0 24 24"
@@ -59,6 +85,7 @@
             </svg>
             Print
           </button>
+          <a href="/logout" class="nav-link" style="color: #fca5a5;">Log out</a>
         </div>
       </div>
     </nav>
@@ -187,6 +214,13 @@
       }
 
       async function init() {
+        try {
+          const me = await (await fetch("/api/me")).json();
+          if (me && me.email && $("whoami")) {
+            $("whoami").textContent = `${me.email} (${me.role})`;
+          }
+        } catch (e) {}
+
         rawLocations = await (await fetch("/api/locations")).json();
         rawItems = await (await fetch("/api/items")).json();
 
