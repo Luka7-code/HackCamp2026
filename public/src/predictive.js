@@ -289,10 +289,10 @@
       ? forecast.reduce((sum, point) => sum + point.units, 0) / forecast.length
       : 0;
     $("predMetrics").innerHTML = [
-      `<span>Average demand <strong>${fmt(average)}</strong> units/day</span>`,
-      `<span>Next 7 days <strong>${fmt(data.totals.d7)}</strong> units</span>`,
-      `<span>Next 14 days <strong>${fmt(data.totals.d14)}</strong> units</span>`,
-      `<span>Next 30 days <strong>${fmt(data.totals.d30)}</strong> units</span>`,
+      `<span>Average demand <strong>${fmt(average)}</strong> orders/day</span>`,
+      `<span>Next 7 days <strong>${fmt(data.totals.d7)}</strong> orders</span>`,
+      `<span>Next 14 days <strong>${fmt(data.totals.d14)}</strong> orders</span>`,
+      `<span>Next 30 days <strong>${fmt(data.totals.d30)}</strong> orders</span>`,
       `<span>On hand <strong>${fmtInt(data.on_hand)}</strong></span>`,
     ].join("");
 
@@ -401,7 +401,7 @@
             pointBackgroundColor: COLORS.blue,
             pointBorderColor: COLORS.surface,
             pointBorderWidth: 2,
-            tension: 0.25,
+            tension: 0,
             spanGaps: false,
           },
           {
@@ -448,7 +448,7 @@
             displayColors: true,
             callbacks: {
               label: (item) =>
-                item.parsed.y === null ? "" : `${item.dataset.label}: ${fmt(item.parsed.y)} units`,
+                item.parsed.y === null ? "" : `${item.dataset.label}: ${fmt(item.parsed.y)} orders`,
             },
           },
         },
@@ -461,12 +461,12 @@
           y: {
             beginAtZero: true,
             suggestedMax: yMax,
-            title: { display: true, text: "Units per day", color: COLORS.muted },
+            title: { display: true, text: "Orders per day", color: COLORS.muted },
             grid: { color: COLORS.grid, lineWidth: 1 },
             border: { display: false },
             ticks: {
               color: COLORS.muted,
-              callback: (value) => (Number(value) < 10 ? Number(value).toFixed(1) : Math.round(value)),
+              precision: 0,
             },
           },
         },
