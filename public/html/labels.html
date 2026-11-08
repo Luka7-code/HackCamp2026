@@ -2,63 +2,814 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Print labels</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Labels · LakeStock</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,4 60,19 32,34 4,19' fill='%23f97316'/%3E%3Cpolygon points='4,19 32,34 32,60 4,45' fill='%230b0f14'/%3E%3Cpolygon points='60,19 60,45 32,60 32,34' fill='%231c2430'/%3E%3Cpath d='M10 24 L17 27.7 V38 L26 42.8 V48 L10 39.4 Z' fill='%2338bdf8'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="../styles/labels.css" />
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <style>
+      :root {
+        --sky: #38bdf8;
+        --green: #22c55e;
+        --orange: #f97316;
+        --ink: #0b0f14;
+        --ink-soft: #1c2430;
+        --body: #334155;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --page: #f6f9fc;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
       body {
-        font-family: system-ui, sans-serif;
-        margin: 20px;
+        margin: 0;
       }
-      h2 {
-        margin: 24px 0 8px;
+
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        color: var(--body);
+        background-color: var(--page);
+        background-image: radial-gradient(
+          circle at 1px 1px,
+          rgba(15, 23, 42, 0.055) 1px,
+          transparent 0
+        );
+        background-size: 22px 22px;
+        -webkit-font-smoothing: antialiased;
       }
-      .grid {
+
+      /* ---------------- Top navbar ---------------- */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--ink);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 12px 30px -22px rgba(2, 6, 23, 0.9);
+      }
+
+      .topbar-inner {
+        max-width: 1180px;
+        margin: 0 auto;
+        min-height: 68px;
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        flex: none;
+        text-decoration: none;
+        color: #fff;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        display: block;
+        filter: drop-shadow(0 3px 8px rgba(56, 189, 248, 0.28));
+      }
+
+      .brand-name {
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .brand-name .lake {
+        color: var(--sky);
+      }
+      .brand-name .stock {
+        color: var(--green);
+      }
+      .brand-name .dot {
+        color: var(--orange);
+      }
+
+      .brand-divider {
+        width: 1px;
+        height: 26px;
+        flex: none;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.85rem;
+        letter-spacing: 0.01em;
+        color: rgba(255, 255, 255, 0.52);
+      }
+
+      .crumb strong {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .topbar-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .btn-print {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        border: 0;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        padding: 11px 18px;
+        border-radius: 10px;
+        color: #22110a;
+        background: linear-gradient(180deg, #fb9542, var(--orange));
+        box-shadow: 0 8px 20px -10px rgba(249, 115, 22, 0.95),
+          inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        transition: transform 0.12s ease, filter 0.16s ease;
+        white-space: nowrap;
+      }
+
+      .btn-print:hover {
+        filter: brightness(1.06);
+      }
+
+      .btn-print:active {
+        transform: translateY(1px);
+      }
+
+      .btn-print svg {
+        width: 17px;
+        height: 17px;
+        display: block;
+      }
+
+      /* ---------------- Page shell ---------------- */
+      .shell {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 30px 24px 60px;
+      }
+
+      /* Hero */
+      .page-head {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        align-items: center;
+        gap: 26px 34px;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f3faff 55%,
+          #f1fdf5 100%
+        );
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+          0 20px 40px -36px rgba(15, 23, 42, 0.5);
       }
-      .label {
-        width: 260px;
-        border: 1px dashed #999;
-        padding: 10px;
+
+      .hero-copy {
+        flex: 1 1 320px;
+        min-width: 0;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--orange);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 1.2rem + 1.7vw, 2.45rem);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
+        color: var(--ink);
+      }
+
+      .lede {
+        margin: 11px 0 0;
+        max-width: 58ch;
+        font-size: 0.94rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .legend {
+        flex: 0 0 auto;
+        width: min(100%, 280px);
+        padding: 6px 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.78);
+        backdrop-filter: blur(4px);
+      }
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 0;
+        font-size: 0.86rem;
+      }
+
+      .legend-row + .legend-row {
+        border-top: 1px solid var(--line);
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        flex: none;
+        border-radius: 3px;
+      }
+
+      .swatch-sky {
+        background: var(--sky);
+      }
+      .swatch-green {
+        background: var(--green);
+      }
+
+      .legend-row strong {
+        color: var(--ink);
+        font-weight: 650;
+      }
+
+      .legend-row span:last-child {
+        margin-left: auto;
+        font-size: 0.74rem;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
+
+      /* Tip callout */
+      .tip {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 18px 0 0;
+        padding: 12px 16px;
+        font-size: 0.86rem;
+        line-height: 1.5;
+        color: #075985;
+        background: rgba(56, 189, 248, 0.08);
+        border: 1px solid rgba(56, 189, 248, 0.28);
+        border-left: 4px solid var(--sky);
+        border-radius: 0 12px 12px 0;
+      }
+
+      .tip code {
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: rgba(56, 189, 248, 0.18);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.82rem;
+        color: #0c4a6e;
+      }
+
+      /* Search Box */
+      .search-box {
+        margin-top: 24px;
+        position: relative;
+        max-width: 480px;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 12px 16px 12px 42px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+
+      .search-box input:focus {
+        border-color: var(--sky);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+      }
+
+      .search-box svg {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 18px;
+        height: 18px;
+        color: var(--muted);
+        pointer-events: none;
+      }
+
+      /* ---------------- Sheets ---------------- */
+      .sheet {
+        margin-top: 38px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+        padding-bottom: 13px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .bar {
+        width: 4px;
+        height: 30px;
+        flex: none;
+        border-radius: 999px;
+      }
+
+      .bar-sky {
+        background: var(--sky);
+      }
+      .bar-green {
+        background: var(--green);
+      }
+
+      .section-head h2 {
+        margin: 0;
+        font-size: 1.14rem;
+        letter-spacing: -0.015em;
+        color: var(--ink);
+      }
+
+      .section-head p {
+        margin: 2px 0 0;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
+
+      .pill {
+        margin-left: auto;
+        padding: 5px 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(244px, 1fr));
+        gap: 16px;
+        counter-reset: labels;
+
+        /* CSS-only totals: one counter per sheet, read once all labels exist */
+        grid-auto-rows: min-content;
+      }
+
+      .grid > .label {
+        counter-increment: labels;
+      }
+
+      .grid::after {
+        content: "On this sheet · " counter(labels);
+        grid-column: 1 / -1;
+        justify-self: start;
+        padding-top: 2px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .grid:empty::before {
+        content: "Nothing queued for printing yet.";
+        grid-column: 1 / -1;
+        padding: 26px;
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.65);
         text-align: center;
-        break-inside: avoid;
+        font-size: 0.86rem;
+        color: var(--muted);
       }
-      .label svg {
+
+      /* ---------------- Label cards ---------------- */
+      .label {
+        position: relative;
+        padding: 18px 14px 12px;
+        text-align: center;
+        background: #fff;
+        border: 1.5px dashed #cbd5e1;
+        border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        break-inside: avoid;
+        page-break-inside: avoid;
+        transition: transform 0.16s ease, border-color 0.16s ease,
+          box-shadow 0.16s ease, background 0.16s ease;
+      }
+
+      /* Accent tab, so a card reads as shelf or item at a glance */
+      .label::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 46px;
+        height: 3px;
+        border-radius: 0 0 4px 4px;
+        background: var(--accent, var(--sky));
+        opacity: 0.75;
+        transition: width 0.18s ease, opacity 0.18s ease;
+      }
+
+      #shelves .label {
+        --accent: var(--sky);
+      }
+
+      #items .label {
+        --accent: var(--green);
+      }
+
+      .label:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent, var(--sky));
+        background: linear-gradient(
+          180deg,
+          #fff 30%,
+          color-mix(in srgb, var(--accent, var(--sky)) 7%, #fff) 100%
+        );
+        box-shadow: 0 16px 30px -20px rgba(15, 23, 42, 0.45);
+      }
+
+      .label:hover::before {
+        width: 80%;
+        opacity: 1;
+      }
+
+      .label > strong {
+        display: block;
+        min-height: 2.55em;
+        font-size: 0.95rem;
+        font-weight: 700;
+        line-height: 1.28;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+        overflow-wrap: anywhere;
+      }
+
+      .label > svg {
+        display: block;
         width: 100%;
         height: auto;
+        margin-top: 8px;
       }
-      .label strong {
+
+      /* ---------------- Footer ---------------- */
+      .foot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 46px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .foot .brand-name {
+        font-size: 0.9rem;
+      }
+
+      .foot-mark {
+        width: 18px;
+        height: 18px;
         display: block;
-        margin-top: 4px;
       }
-      .label small {
-        color: #555;
+
+      .foot span:last-child {
+        margin-left: auto;
       }
-      button {
-        padding: 8px 14px;
-        font-size: 1rem;
-      }
+
+      /* ---------------- Print ---------------- */
       @media print {
-        button,
-        .noprint {
+        @page {
+          margin: 10mm;
+        }
+
+        body {
+          background: #fff;
+          color: #000;
+        }
+
+        .topbar,
+        .page-head,
+        .tip,
+        .search-box,
+        .pill,
+        .foot,
+        .noprint,
+        .grid::after,
+        .grid:empty::before {
+          display: none !important;
+        }
+
+        .shell {
+          max-width: none;
+          padding: 0;
+        }
+
+        .sheet {
+          margin-top: 0;
+        }
+
+        .sheet + .sheet {
+          margin-top: 8mm;
+        }
+
+        .section-head {
+          margin: 0 0 3mm;
+          padding: 0 0 2mm;
+          border-bottom: 0;
+        }
+
+        .section-head h2 {
+          font-size: 11pt;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #000;
+        }
+
+        .section-head p {
           display: none;
+        }
+
+        .bar {
+          width: 2mm;
+          height: 6mm;
+          border-radius: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4mm;
+        }
+
+        .label {
+          width: 60mm;
+          padding: 4mm 3mm 3mm;
+          border: 1px dashed #000;
+          border-radius: 0;
+          box-shadow: none !important;
+          transform: none !important;
+          background: #fff !important;
+        }
+
+        .label::before {
+          display: none;
+        }
+
+        .label > strong {
+          min-height: 0;
+          margin-bottom: 2mm;
+          font-size: 9pt;
+          line-height: 1.25;
+        }
+
+        .label > svg {
+          margin-top: 0;
+        }
+      }
+
+      /* ---------------- Small screens ---------------- */
+      @media (max-width: 720px) {
+        .topbar-inner {
+          min-height: auto;
+          padding: 11px 16px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .brand-divider,
+        .crumb {
+          display: none;
+        }
+
+        .topbar-actions {
+          margin-left: auto;
+        }
+
+        .btn-print {
+          padding: 10px 14px;
+        }
+
+        .shell {
+          padding: 20px 16px 48px;
+        }
+
+        .page-head {
+          padding: 20px;
+          border-radius: 16px;
+        }
+
+        .legend {
+          width: 100%;
+        }
+
+        .section-head .pill {
+          display: none;
+        }
+
+        .grid {
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 12px;
+        }
+
+        .foot span:last-child {
+          margin-left: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
         }
       }
     </style>
   </head>
   <body>
-    <button onclick="window.print()">🖨 Print</button>
-    <p class="noprint">Tip: add <code>?sku=SKU-123456</code> to the URL to print just one item.</p>
+    <!-- Logo mark: isometric crate with the sky-blue L -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="logo-mark" viewBox="0 0 64 64">
+        <polygon points="32,4 60,19 32,34 4,19" fill="#f97316" />
+        <polygon points="4,19 32,34 32,60 4,45" fill="#0b0f14" />
+        <polygon points="60,19 60,45 32,60 32,34" fill="#1c2430" />
+        <g transform="matrix(1,0.5357,0,1,4,19)">
+          <path d="M6 6 H13 V19 H23 V25 H6 Z" fill="#38bdf8" />
+        </g>
+      </symbol>
+    </svg>
 
-    <h2>Shelf labels</h2>
-    <div id="shelves" class="grid"></div>
+    <nav class="topbar" aria-label="Main">
+      <div class="topbar-inner">
+        <a class="brand" href="/" aria-label="LakeStock home">
+          <svg class="brand-mark" aria-hidden="true">
+            <use href="#logo-mark" />
+          </svg>
+          <span class="brand-name"
+            ><span class="lake">Lake</span><span class="stock">Stock</span
+            ><span class="dot">.</span></span
+          >
+        </a>
 
-    <h2>Item labels</h2>
-    <div id="items" class="grid"></div>
+        <span class="brand-divider" aria-hidden="true"></span>
+
+        <span class="crumb">Warehouse <strong>Labels</strong></span>
+
+        <div class="topbar-actions">
+          <button class="btn-print" type="button" onclick="window.print()">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 9V3h12v6" />
+              <path
+                d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"
+              />
+              <rect x="6" y="14" width="12" height="8" rx="1" />
+            </svg>
+            Print
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="shell">
+      <section class="page-head">
+        <div class="hero-copy">
+          <p class="eyebrow">Warehouse · Print center</p>
+          <h1>Shelf &amp; item labels</h1>
+          <p class="lede">
+            Print scannable CODE128 labels on sticker sheets or plain paper.
+            Every label keeps its quiet zone, so handheld scanners read it the
+            first time — no retries at the shelf.
+          </p>
+        </div>
+
+        <aside class="legend" aria-label="Label types">
+          <div class="legend-row">
+            <i class="swatch swatch-sky"></i>
+            <strong>Shelf labels</strong>
+            <span>Aisle · rack · shelf</span>
+          </div>
+          <div class="legend-row">
+            <i class="swatch swatch-green"></i>
+            <strong>Item labels</strong>
+            <span>SKU barcode</span>
+          </div>
+        </aside>
+      </section>
+
+      <p class="tip noprint">
+        Tip: add <code>?sku=SKU-123456</code> to the URL to print just one item.
+      </p>
+
+      <div class="search-box noprint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="label-search" placeholder="Search item, shelf location, or barcode..." />
+      </div>
+
+      <section class="sheet">
+        <div class="section-head">
+          <span class="bar bar-sky" aria-hidden="true"></span>
+          <div>
+            <h2>Shelf labels</h2>
+            <p>Stick to the shelf edge above the pick face</p>
+          </div>
+          <span class="pill">Print on sticker sheets</span>
+        </div>
+        <div id="shelves" class="grid"></div>
+      </section>
+
+      <section class="sheet">
+        <div class="section-head">
+          <span class="bar bar-green" aria-hidden="true"></span>
+          <div>
+            <h2>Item labels</h2>
+            <p>Apply to the item, bin or outer carton</p>
+          </div>
+          <span class="pill">Scan tested</span>
+        </div>
+        <div id="items" class="grid"></div>
+      </section>
+
+      <footer class="foot">
+        <svg class="foot-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+        <span class="brand-name"
+          ><span class="lake">Lake</span><span class="stock">Stock</span
+          ><span class="dot">.</span></span
+        >
+        <span>Warehouse management · Labels</span>
+      </footer>
+    </main>
 
     <script>
       const $ = (id) => document.getElementById(id);
+
+      let rawLocations = [];
+      let rawItems = [];
 
       function makeLabel(container, code, title) {
         const div = document.createElement("div");
@@ -75,13 +826,45 @@
         });
       }
 
-      async function init() {
-        const only = new URLSearchParams(location.search).get("sku");
-        const locs = await (await fetch("/api/locations")).json();
-        const items = await (await fetch("/api/items")).json();
+      function renderLabels(query = "") {
+        const q = query.trim().toLowerCase();
 
-        if (!only) locs.forEach((l) => makeLabel($("shelves"), l.barcode, l.label));
-        items.filter((i) => !only || i.sku_id === only).forEach((i) => makeLabel($("items"), i.barcode, i.name));
+        $("shelves").innerHTML = "";
+        $("items").innerHTML = "";
+
+        const only = new URLSearchParams(location.search).get("sku");
+
+        const filteredLocs = rawLocations.filter(
+          (l) =>
+            !q ||
+            (l.label && l.label.toLowerCase().includes(q)) ||
+            (l.barcode && l.barcode.toLowerCase().includes(q))
+        );
+
+        const filteredItems = rawItems
+          .filter((i) => !only || i.sku_id === only)
+          .filter(
+            (i) =>
+              !q ||
+              (i.name && i.name.toLowerCase().includes(q)) ||
+              (i.barcode && i.barcode.toLowerCase().includes(q))
+          );
+
+        if (!only) {
+          filteredLocs.forEach((l) => makeLabel($("shelves"), l.barcode, l.label));
+        }
+        filteredItems.forEach((i) => makeLabel($("items"), i.barcode, i.name));
+      }
+
+      async function init() {
+        rawLocations = await (await fetch("/api/locations")).json();
+        rawItems = await (await fetch("/api/items")).json();
+
+        renderLabels();
+
+        $("label-search").addEventListener("input", (e) => {
+          renderLabels(e.target.value);
+        });
       }
       init();
     </script>
