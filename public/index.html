@@ -2,80 +2,140 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#131a26" />
     <title>Warehouse WMS</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header>
-      <h1>📦 Warehouse WMS</h1>
-      <div class="who">
-        <input id="employee" value="alex" placeholder="Employee name" />
-        <select id="role">
-          <option value="worker">Worker</option>
-          <option value="manager">Manager</option>
-        </select>
-      </div>
-    </header>
+    <div class="topbar">
+      <header class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">📦</span>
+          <div class="brand-text">
+            <h1>Warehouse WMS</h1>
+            <p>Stock movements &amp; shelf map</p>
+          </div>
+        </div>
 
-    <nav id="tabs">
-      <button data-tab="scan" class="active">Scan</button>
-      <button data-tab="items">Items</button>
-      <button data-tab="register" class="mgr">Register item</button>
-      <button data-tab="audit" class="mgr">Audit history</button>
-    </nav>
+        <div class="who">
+          <label class="field compact">
+            <span>Employee</span>
+            <input id="employee" value="alex" placeholder="Employee name" autocomplete="off" />
+          </label>
+          <label class="field compact">
+            <span>Role</span>
+            <select id="role">
+              <option value="worker">Worker</option>
+              <option value="manager">Manager</option>
+            </select>
+          </label>
+        </div>
+      </header>
 
-    <div id="toast"></div>
+      <nav id="tabs" aria-label="Sections">
+        <button data-tab="scan" class="active">
+          <span class="ico" aria-hidden="true">▣</span>Scan
+        </button>
+        <button data-tab="items">
+          <span class="ico" aria-hidden="true">▤</span>Items
+        </button>
+        <button data-tab="register" class="mgr">
+          <span class="ico" aria-hidden="true">＋</span>Register item
+        </button>
+        <button data-tab="audit" class="mgr">
+          <span class="ico" aria-hidden="true">◷</span>Audit history
+        </button>
+      </nav>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <main>
       <!-- Always visible: warehouse map -->
-      <section class="card">
-        <h2>Warehouse map</h2>
+      <section class="card map-card">
+        <div class="card-head">
+          <h2>Warehouse map</h2>
+          <span class="eyebrow">Live layout</span>
+        </div>
         <div id="map"></div>
         <p class="hint">Highlighted shelf = where the scanned item is.</p>
       </section>
 
-      <!-- SCAN TAB -->
-      <section id="tab-scan" class="card tab">
-        <h2>Scan</h2>
-        <div id="reader"></div>
-        <div class="row">
-          <button id="startBtn">Start camera</button>
-          <button id="stopBtn" class="secondary" disabled>Stop</button>
-        </div>
-        <div class="row">
-          <input id="manual" placeholder="Or type a barcode (SKU-100001 or LOC-A-01)" />
-          <button id="manualBtn">Look up</button>
-        </div>
-        <div id="result"></div>
-      </section>
+      <div class="panel-stack">
+        <!-- SCAN TAB -->
+        <section id="tab-scan" class="card tab">
+          <div class="card-head">
+            <h2>Scan</h2>
+            <span class="eyebrow">CODE 128</span>
+          </div>
 
-      <!-- ITEMS TAB -->
-      <section id="tab-items" class="card tab" hidden>
-        <h2>Items</h2>
-        <input id="search" placeholder="Search items by name..." />
-        <div id="itemList"></div>
-      </section>
+          <div id="reader"></div>
 
-      <!-- REGISTER TAB (manager) -->
-      <section id="tab-register" class="card tab" hidden>
-        <h2>Register new item</h2>
-        <input id="newName" placeholder="Item name" />
-        <input id="newDesc" placeholder="Description" />
-        <select id="newLoc"></select>
-        <button id="registerBtn">Register item</button>
-        <div id="registered"></div>
-      </section>
+          <div class="row">
+            <button id="startBtn">Start camera</button>
+            <button id="stopBtn" class="secondary" disabled>Stop</button>
+          </div>
 
-      <!-- AUDIT TAB (manager) -->
-      <section id="tab-audit" class="card tab" hidden>
-        <h2>Audit history</h2>
-        <div class="row">
-          <input id="auditSku" placeholder="Filter by SKU (optional)" />
-          <button id="auditBtn">Load</button>
-        </div>
-        <div class="scroll"><table id="auditTable"></table></div>
-      </section>
+          <div class="divider"><span>or enter a code manually</span></div>
+
+          <div class="row">
+            <input id="manual" placeholder="SKU-100001 or LOC-A-01" autocomplete="off" />
+            <button id="manualBtn">Look up</button>
+          </div>
+
+          <div id="result"></div>
+        </section>
+
+        <!-- ITEMS TAB -->
+        <section id="tab-items" class="card tab" hidden>
+          <div class="card-head">
+            <h2>Items</h2>
+            <span class="eyebrow">Inventory</span>
+          </div>
+          <input id="search" placeholder="Search items by name..." autocomplete="off" />
+          <div id="itemList"></div>
+        </section>
+
+        <!-- REGISTER TAB (manager) -->
+        <section id="tab-register" class="card tab" hidden>
+          <div class="card-head">
+            <h2>Register new item</h2>
+            <span class="eyebrow">Manager</span>
+          </div>
+
+          <label class="field">
+            <span>Item name</span>
+            <input id="newName" placeholder="e.g. Desk Lamp" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Description</span>
+            <input id="newDesc" placeholder="Optional details" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Home shelf</span>
+            <select id="newLoc"></select>
+          </label>
+
+          <button id="registerBtn">Register item</button>
+          <div id="registered"></div>
+        </section>
+
+        <!-- AUDIT TAB (manager) -->
+        <section id="tab-audit" class="card tab" hidden>
+          <div class="card-head">
+            <h2>Audit history</h2>
+            <span class="eyebrow">Last 100 events</span>
+          </div>
+          <div class="row">
+            <input id="auditSku" placeholder="Filter by SKU (optional)" autocomplete="off" />
+            <button id="auditBtn" class="secondary">Load</button>
+          </div>
+          <div class="scroll">
+            <table id="auditTable"></table>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>

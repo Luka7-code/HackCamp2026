@@ -2,60 +2,195 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Print labels</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <style>
+      :root {
+        --ink: #121a27;
+        --muted: #64718a;
+        --line: #dfe4ee;
+        --brand: #3457d5;
+        --surface: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
-        font-family: system-ui, sans-serif;
-        margin: 20px;
+        margin: 0;
+        padding: 28px 24px 56px;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        color: var(--ink);
+        background: #eef1f7;
+        -webkit-font-smoothing: antialiased;
       }
+
+      .page-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        max-width: 1160px;
+        margin: 0 auto 24px;
+        padding: 18px 22px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 6px 22px -12px rgba(16, 24, 40, 0.28);
+      }
+
+      .page-head h1 {
+        margin: 0;
+        font-size: 1.15rem;
+        letter-spacing: -0.015em;
+      }
+
+      .page-head p {
+        margin: 4px 0 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .page-head code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: #eef1f8;
+        font-size: 0.85em;
+      }
+
+      button {
+        padding: 11px 18px;
+        font: inherit;
+        font-weight: 600;
+        color: #fff;
+        background: var(--brand);
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+      }
+
+      button:hover {
+        background: #2743ab;
+      }
+
+      section {
+        max-width: 1160px;
+        margin: 0 auto 28px;
+      }
+
       h2 {
-        margin: 24px 0 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 12px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
       }
+
+      h2::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+
       .grid {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 14px;
       }
+
       .label {
-        width: 260px;
-        border: 1px dashed #999;
-        padding: 10px;
+        width: 268px;
+        padding: 14px 14px 12px;
         text-align: center;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
         break-inside: avoid;
+        page-break-inside: avoid;
+        box-shadow: 0 4px 14px -10px rgba(16, 24, 40, 0.4);
       }
+
+      .label strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+      }
+
       .label svg {
+        display: block;
         width: 100%;
         height: auto;
       }
-      .label strong {
-        display: block;
-        margin-top: 4px;
-      }
+
       .label small {
-        color: #555;
+        color: var(--muted);
       }
-      button {
-        padding: 8px 14px;
-        font-size: 1rem;
+
+      @page {
+        size: A4;
+        margin: 12mm;
       }
+
       @media print {
-        button,
-        .noprint {
+        body {
+          padding: 0;
+          background: #fff;
+        }
+
+        .page-head {
           display: none;
+        }
+
+        section {
+          margin-bottom: 10mm;
+        }
+
+        .label {
+          box-shadow: none;
+          border: 1px dashed #999;
+        }
+      }
+
+      @media (max-width: 560px) {
+        body {
+          padding: 16px 14px 40px;
+        }
+
+        .label {
+          width: 100%;
         }
       }
     </style>
   </head>
   <body>
-    <button onclick="window.print()">🖨 Print</button>
-    <p class="noprint">Tip: add <code>?sku=SKU-123456</code> to the URL to print just one item.</p>
+    <div class="page-head noprint">
+      <div>
+        <h1>Barcode labels</h1>
+        <p>Tip: add <code>?sku=SKU-123456</code> to the URL to print just one item.</p>
+      </div>
+      <button onclick="window.print()">🖨 Print</button>
+    </div>
 
-    <h2>Shelf labels</h2>
-    <div id="shelves" class="grid"></div>
+    <section>
+      <h2>Shelf labels</h2>
+      <div id="shelves" class="grid"></div>
+    </section>
 
-    <h2>Item labels</h2>
-    <div id="items" class="grid"></div>
+    <section>
+      <h2>Item labels</h2>
+      <div id="items" class="grid"></div>
+    </section>
 
     <script>
       const $ = (id) => document.getElementById(id);
