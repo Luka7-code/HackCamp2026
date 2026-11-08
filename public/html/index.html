@@ -606,6 +606,66 @@
         margin-left: auto;
       }
 
+            /* --- Bottom Fixed App Navigation Bar --- */
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: var(--ink);
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 -10px 30px -15px rgba(2, 6, 23, 0.8);
+        z-index: 40;
+        padding: 10px 16px;
+      }
+
+      .bottom-nav-inner {
+        max-width: 420px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        border-radius: 10px;
+        transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+      }
+
+      .bottom-nav-item svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .bottom-nav-item:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .bottom-nav-item.active {
+        color: var(--sky);
+        background: rgba(56, 189, 248, 0.1);
+      }
+
+      .bottom-nav-item.active svg {
+        stroke: var(--sky);
+      }
+
+      /* Ensure page shell has extra bottom padding so footer/content clears the fixed nav */
+      .shell {
+        padding-bottom: 100px !important;
+      }
+
       @media (max-width: 720px) {
         .topbar-inner {
           padding: 11px 16px;
@@ -648,9 +708,6 @@
 
         <div class="topbar-actions">
           <span id="whoami" class="who"></span>
-          <a href="index.html" class="nav-link active">Scan</a>
-          <a href="labels.html" class="nav-link">Print</a>
-          <a href="map.html" class="nav-link">Map</a>
           <a href="/logout" class="nav-link" style="color: #fca5a5;">Log out</a>
         </div>
       </div>
@@ -717,6 +774,23 @@
 
     <!-- Toast Popup Notifications -->
     <div id="toast"></div>
+    <!-- Fixed Bottom App Navigation -->
+    <nav class="bottom-nav" aria-label="Bottom Navigation">
+      <div class="bottom-nav-inner">
+        <a href="index.html" class="bottom-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          Scan
+        </a>
+        <a href="labels.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </a>
+        <a href="map.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Map
+        </a>
+      </div>
+    </nav>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
