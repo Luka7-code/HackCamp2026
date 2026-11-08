@@ -174,11 +174,15 @@ async function handleCode(raw) {
 
 // ---------- Quick Action Popups ----------
 function showQuickDispatchSheet(item, shelf) {
-  const shelfCode = shelf.location_code || shelf.barcode || shelf;
-  const shelfLoc = item.locations?.find((l) => l.location_code === shelfCode || l.label === shelfCode);
-  const maxQty = shelfLoc && shelfLoc.qty_stowed !== undefined ? shelfLoc.qty_stowed : (item.qty_stowed ?? 0);
+  // Normalize shelf code by removing 'LOC-' prefix if present for robust matching
+  const rawShelfCode = shelf.location_code || shelf.barcode || shelf;
+  const shelfCode = typeof rawShelfCode === "string" ? rawShelfCode.replace("LOC-", "") : rawShelfCode;
 
-  console.log("🔍 Opening Quick Dispatch Sheet:", { item, shelf, shelfCode, shelfLoc, maxQty });
+  // Find the exact quantity stowed on this specific shelf only
+  const shelfLoc = item.locations?.find((l) => l.location_code === shelfCode || l.location_code === `LOC-${shelfCode}`);
+  const maxQty = shelfLoc ? Number(shelfLoc.qty_stowed || 0) : 0;
+
+  console.log("🔍 Quick Dispatch exact shelf match:", { shelfCode, shelfLoc, maxQty });
 
   openSheet(`
     <div class="sheet-top">
@@ -187,7 +191,7 @@ function showQuickDispatchSheet(item, shelf) {
         <div class="sheet-label">Quick Dispatch</div>
         <div class="sheet-name">${esc(item.name)}</div>
         <div class="sheet-meta">From Shelf: <b>${esc(shelf.label || shelfCode)}</b></div>
-        <div class="sheet-meta" style="margin:0">Available on shelf: <b>${maxQty}</b></div>
+        <div class="sheet-meta" style="margin:0">Available on this shelf: <b>${maxQty}</b></div>
       </div>
     </div>
 
@@ -195,7 +199,7 @@ function showQuickDispatchSheet(item, shelf) {
       <span class="sheet-label">Amount to Dispatch</span>
       <div class="qty">
         <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
-        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxQty}" value="1" inputmode="numeric">
+        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxQty}" value="${maxQty > 0 ? 1 : 0}" inputmode="numeric">
         <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
       </div>
     </div>
@@ -206,12 +210,15 @@ function showQuickDispatchSheet(item, shelf) {
     </button>
   `);
 }
-
 function showQuickStowSheet(shelf, item) {
-  const shelfCode = shelf.location_code || shelf.barcode || shelf;
-  const maxTransit = item.qty_in_transit ?? 0;
+  const rawShelfCode = shelf.location_code || shelf.barcode || shelf;
+  const shelfCode = typeof rawShelfCode === "string" ? rawShelfCode.replace("LOC-", "") : rawShelfCode;
+  const maxTransit = Number(item.qty_in_transit ?? 0);
 
   console.log("🔍 Opening Quick Stow Sheet:", { shelf, item, shelfCode, maxTransit });
+
+  // Default to 1 if available, but never more than maxTransit
+  const initialQty = maxTransit > 0 ? 1 : 0;
 
   openSheet(`
     <div class="sheet-top">
@@ -227,30 +234,51 @@ function showQuickStowSheet(shelf, item) {
     <div class="shelf-pick" style="margin-top: 14px;">
       <span class="sheet-label">Amount to Stow</span>
       <div class="qty">
-        <button class="qty-btn" type="button" onclick="stepQty(-1)">−</button>
-        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxTransit}" value="1" inputmode="numeric">
-        <button class="qty-btn" type="button" onclick="stepQty(1)">+</button>
+        <button class="qty-btn" type="button" onclick="stepQty(-1, ${maxTransit})">−</button>
+        <input id="qtyPick" class="qty-input" type="number" min="1" max="${maxTransit}" value="${initialQty}" inputmode="numeric">
+        <button class="qty-btn" type="button" onclick="stepQty(1, ${maxTransit})">+🥞</button>
       </div>
     </div>
 
-    <button class="status-btn STOWED current" style="width:100%; margin-top:16px; padding:14px; font-size:1rem; border-radius:12px; background:var(--accent); color:#fff; border:none; cursor:pointer;"
+    <button id="confirmStowBtn" class="status-btn STOWED current" style="width:100%; margin-top:16px; padding:14px; font-size:1rem; border-radius:12px; background:var(--accent); color:#fff; border:none; cursor:pointer;"
             onclick="confirmQuickAction('${esc(item.barcode)}', 'STOWED', '${esc(shelfCode)}')">
       <span>📥</span> Confirm Stow
     </button>
   `);
 }
 
+// Update stepQty to respect a maximum limit if passed
+function stepQty(d, maxLimit) {
+  const el = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
+  if (!el) return;
+  const oldVal = parseInt(el.value, 10) || 1;
+  let newVal = oldVal + d;
+  if (maxLimit !== undefined) {
+    newVal = Math.min(newVal, maxLimit);
+  }
+  el.value = Math.max(1, newVal);
+  console.log("🔢 Quantity adjusted by:", d, "→ New value:", el.value);
+}
+
 async function confirmQuickAction(barcode, status, locationCode) {
   const qtyInput = document.querySelector("#sheetBody #qtyPick") || $("qtyPick");
   const amount = qtyInput ? Math.max(1, parseInt(qtyInput.value, 10) || 1) : 1;
 
-  console.log("⚡ Executing quick action:", { barcode, status, locationCode, amount });
-  if (!locationCode) {
-    toast("Error: Location code is missing", true);
+  console.log("⚡ confirmQuickAction clicked:", { barcode, status, locationCode, amount });
+
+  if (!locationCode || locationCode === "undefined" || locationCode === "null") {
+    toast("Error: Target shelf location code is missing!", true);
+    console.error("❌ Invalid locationCode passed to confirmQuickAction:", locationCode);
     return;
   }
-  await setStatus(barcode, status, locationCode, amount);
-  pendingScan = null;
+
+  try {
+    await setStatus(barcode, status, locationCode, amount);
+    pendingScan = null;
+  } catch (err) {
+    console.error("❌ Quick action failed inside confirmQuickAction:", err);
+    toast(err.message, true);
+  }
 }
 // ---------- Scanner (always on) ----------
 let scanning = false;
@@ -548,18 +576,20 @@ async function setStatus(barcode, status, location, amount = 1) {
     });
     console.log("📥 API response received:", out);
 
-    // Refresh item cache from backend so data is fully in sync
+    // 1. Await the full reload of the item cache from the server
     await loadItemCache();
 
-    const freshItem = itemCache.get(barcode);
+    // 2. Fetch the newly updated item from the fresh cache
+    const freshItem = itemCache.get(barcode) || (await api(`/api/scan/${encodeURIComponent(barcode)}`));
     if (freshItem) {
+      itemCache.set(barcode, freshItem);
       highlight(freshItem.location_code);
-      showItem(freshItem); // Automatically re-renders the sheet with updated quantities!
+      showItem(freshItem); // Refreshes the popup sheet with exact database numbers!
     } else {
       closeSheet();
     }
 
-    const msgs = { IN_TRANSIT: "grabbed", STOWED: "put on shelf", DISPATCHED: "dispatched" };
+    const msgs = { IN_TRANSIT: "received", STOWED: "stowed on shelf", DISPATCHED: "dispatched" };
     toast(`${amount} unit(s) ${msgs[status]}`);
   } catch (err) {
     console.error("❌ setStatus failed:", err.message);
