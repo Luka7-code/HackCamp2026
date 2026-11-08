@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Warehouse WMS</title>
     <link rel="stylesheet" href="/style.css" />
+    <script type="module" src="/src/nav-bar.js"></script>
   </head>
   <body>
     <header>
@@ -14,38 +15,9 @@
         <a href="/logout" style="color: #fff">Log out</a>
       </div>
     </header>
-
-    <nav id="tabs">
-      <button data-tab="scan" class="active">Scan</button>
-      <button data-tab="items">Items</button>
-      <button data-tab="register" class="mgr">Register item</button>
-      <button data-tab="audit" class="mgr">Audit history</button>
-    </nav>
-
     <div id="toast"></div>
-
     <main>
-      <!-- Always visible: warehouse map -->
-      <section class="card">
-        <h2>Warehouse map</h2>
-        <div id="map"></div>
-        <p class="hint">Highlighted shelf = where the scanned item is.</p>
-      </section>
-
-      <!-- SCAN TAB -->
-      <section id="tab-scan" class="card tab">
-        <h2>Scan</h2>
-        <div id="reader"></div>
-        <div class="row">
-          <button id="startBtn">Start camera</button>
-          <button id="stopBtn" class="secondary" disabled>Stop</button>
-        </div>
-        <div class="row">
-          <input id="manual" placeholder="Or type a barcode (SKU-100001 or LOC-A-01)" />
-          <button id="manualBtn">Look up</button>
-        </div>
-        <div id="result"></div>
-      </section>
+      <div id="reader"></div>
 
       <!-- ITEMS TAB -->
       <section id="tab-items" class="card tab" hidden>
@@ -73,6 +45,7 @@
         </div>
         <div class="scroll"><table id="auditTable"></table></div>
       </section>
+      <site-navbar></site-navbar>
     </main>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>

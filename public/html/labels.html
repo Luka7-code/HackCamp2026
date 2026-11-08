@@ -67,11 +67,11 @@
         container.appendChild(div);
         JsBarcode(div.querySelector("svg"), code, {
           format: "CODE128",
-          width: 3, // bar thickness
-          height: 80,
-          margin: 10, // quiet zone: required for reliable scanning
+          width: 4, // bar thickness
+          height: 120,
+          margin: 20, // quiet zone: required for reliable scanning
           displayValue: true,
-          fontSize: 16,
+          fontSize: 18,
         });
       }
 
