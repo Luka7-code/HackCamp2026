@@ -620,24 +620,29 @@
       }
 
       .bottom-nav-inner {
-      max-width: 480px; /* Increased from 420px to fit 4 items evenly */
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      gap: 8px;
-     }
+        max-width: 480px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: stretch;
+        gap: 8px;
+      }
 
       .bottom-nav-item {
         display: flex;
+        flex: 1 1 0;
         flex-direction: column;
         align-items: center;
+        justify-content: center;
+        min-width: 0;
         gap: 4px;
         color: rgba(255, 255, 255, 0.6);
         text-decoration: none;
         font-size: 0.75rem;
         font-weight: 600;
-        padding: 6px 16px;
+        line-height: 1.2;
+        text-align: center;
+        padding: 6px 4px;
         border-radius: 10px;
         transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
       }
@@ -645,6 +650,16 @@
       .bottom-nav-item svg {
         width: 20px;
         height: 20px;
+        flex: none;
+      }
+
+      /* Nav items that toggle a panel are buttons; keep them identical to links.
+         Do not use `font: inherit` here — it resets the size/weight above. */
+      button.bottom-nav-item {
+        background: none;
+        border: 0;
+        cursor: pointer;
+        font-family: inherit;
       }
 
       .bottom-nav-item:hover {
@@ -674,8 +689,16 @@
         .brand-divider, .crumb {
           display: none;
         }
+        .bottom-nav-inner {
+          gap: 4px;
+        }
+        .bottom-nav-item {
+          font-size: 0.68rem;
+        }
       }
     </style>
+    <link rel="stylesheet" href="/predictive.css" />
+    <link rel="stylesheet" href="/procurement.css" />
   </head>
   <body>
     <!-- Logo mark: isometric crate with the sky-blue L -->
@@ -765,7 +788,203 @@
       </footer>
     </main>
 
-    <!-- Popup Bottom Sheet for Scanned Items & Shelves -->
+    <!-- PREDICTIVE AI (manager) -->
+    <section id="tab-predictive" class="card tab" hidden>
+      <div class="pred-header">
+        <div>
+          <h2>Predictive AI</h2>
+          <p class="hint">Demand forecasts, stockout risk, restocking recommendations and what-if simulation.</p>
+        </div>
+        <span id="predUpdated" class="pred-updated"></span>
+      </div>
+
+      <div id="predNote" class="pred-note">Forecasts combine recent demand history, current inventory, supplier lead times and safety stock.</div>
+      <div id="predSummary" class="pred-kpis"></div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <div>
+            <h3>Demand forecast</h3>
+            <p class="hint">Predicted orders per day based on recent demand and current inventory.</p>
+          </div>
+          <div class="pred-controls">
+            <select id="predSku" aria-label="Select a product"></select>
+            <div class="seg" id="predHorizon" role="group" aria-label="Forecast horizon">
+              <button data-h="7">7 days</button>
+              <button data-h="14">14 days</button>
+              <button data-h="30" class="active">30 days</button>
+            </div>
+          </div>
+        </div>
+        <div id="predMetrics" class="pred-metrics"></div>
+        <div class="pred-chart-wrap">
+          <canvas id="predChart" role="img" aria-label="Observed demand history and predicted demand"></canvas>
+        </div>
+        <div class="pred-chart-foot">
+          <span class="hint">Solid line = observed history · dashed line = forecast</span>
+          <span id="predChartStatus" class="pred-chart-status" aria-live="polite"></span>
+          <button id="predTableBtn" class="link-btn" type="button">Show data table</button>
+        </div>
+        <div id="predTableWrap" class="scroll" hidden></div>
+      </div>
+
+      <div class="pred-two-col">
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Stockout risk</h3>
+            <span class="hint" id="predRiskCount"></span>
+          </div>
+          <div id="predStockouts" class="scroll"></div>
+        </div>
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Overstock</h3>
+            <span class="hint" id="predOverCount"></span>
+          </div>
+          <div id="predOverstock" class="scroll"></div>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Smart restocking</h3>
+          <span class="hint">Recommendations only — inventory is never changed automatically.</span>
+        </div>
+        <div id="predRestock" class="scroll"></div>
+        <div class="pred-actions">
+          <button id="predRunBtn" class="secondary" type="button">Save forecast snapshot</button>
+          <span class="hint" id="predRunNote"></span>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Supplier &amp; safety settings</h3>
+          <span class="hint">Defaults are configurable; manager overrides are stored per product.</span>
+        </div>
+        <div id="predSettings" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>What-if simulation</h3>
+          <span class="hint">Recalculates stockout risk and reorder quantities without changing any data.</span>
+        </div>
+        <div class="pred-sim-controls">
+          <label>Demand change
+            <select id="simDemand">
+              <option value="30">+30%</option>
+              <option value="-20">−20%</option>
+              <option value="0">No change</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </label>
+          <label id="simCustomWrap" hidden>Custom % <input id="simCustom" type="number" value="10" min="-90" max="200" step="1" /></label>
+          <label>Supplier delay
+            <select id="simLead">
+              <option value="0">No delay</option>
+              <option value="3">+3 days</option>
+              <option value="7">+7 days</option>
+              <option value="-2">−2 days</option>
+            </select>
+          </label>
+          <button id="simRunBtn" type="button">Run simulation</button>
+          <button id="simResetBtn" class="secondary" type="button">Reset</button>
+        </div>
+        <div id="simResult" class="pred-sim-result"></div>
+      </div>
+    </section>
+
+    <!-- PROCUREMENT (manager) -->
+    <section id="tab-procurement" class="card tab" hidden>
+      <div class="pred-header">
+        <div>
+          <h2>Procurement</h2>
+          <p class="hint">Turn restock recommendations into purchase orders, run them through approval and track supplier replies.</p>
+        </div>
+        <span id="procUpdated" class="pred-updated"></span>
+      </div>
+
+      <div id="procNote" class="pred-note">Run automation to detect restock needs and create purchase orders.</div>
+      <div id="procKpis" class="pred-kpis"></div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <div>
+            <h3>Automation</h3>
+            <p class="hint">Detects restock recommendations, creates purchase orders and routes them through the current approval mode.</p>
+          </div>
+          <div class="pred-actions">
+            <button id="procRunBtn" type="button">Run automation now</button>
+            <button id="procRefreshBtn" class="secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <p class="hint" id="procRunNote"></p>
+      </div>
+
+      <div class="pred-panel" id="procPendingPanel" hidden>
+        <div class="pred-panel-head">
+          <h3>Pending approvals</h3>
+          <span class="hint" id="procPendingCount"></span>
+        </div>
+        <div id="procPending" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Purchase orders</h3>
+          <span class="hint" id="procPOCount"></span>
+        </div>
+        <div class="proc-filters">
+          <select id="procStatusFilter" aria-label="Filter orders by status"></select>
+          <input id="procSearch" type="search" placeholder="Search order, SKU or supplier" />
+        </div>
+        <div id="procPOs" class="scroll"></div>
+      </div>
+
+      <div id="procActionPanel" class="pred-panel proc-action-panel" hidden></div>
+
+      <div class="pred-two-col">
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Suppliers</h3>
+            <span class="hint">Purchase orders are emailed to these addresses.</span>
+          </div>
+          <div id="procSuppliers" class="scroll"></div>
+          <div class="proc-form">
+            <label>Name <input id="supName" placeholder="Supplier name" /></label>
+            <label>Email <input id="supEmail" type="email" placeholder="orders@supplier.com" /></label>
+            <label>Contact <input id="supContact" placeholder="Contact person" /></label>
+            <label>Lead days <input id="supLead" type="number" min="0" step="1" value="7" /></label>
+            <button id="supAddBtn" type="button">Add supplier</button>
+          </div>
+        </div>
+        <div class="pred-panel">
+          <div class="pred-panel-head">
+            <h3>Procurement settings</h3>
+            <span class="hint">Caps are enforced server-side on every order.</span>
+          </div>
+          <div id="procSettings"></div>
+        </div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Products</h3>
+          <span class="hint">Assign a supplier and unit cost so recommendations become priced orders.</span>
+        </div>
+        <div id="procProducts" class="scroll"></div>
+      </div>
+
+      <div class="pred-panel">
+        <div class="pred-panel-head">
+          <h3>Supplier emails</h3>
+          <span class="hint">Outbound orders and manually recorded replies.</span>
+        </div>
+        <div id="procEmails" class="scroll"></div>
+      </div>
+    </section>
+
     <div id="sheet" aria-live="polite">
       <div class="sheet-handle"></div>
       <button id="sheetClose" aria-label="Close">✕</button>
@@ -777,7 +996,7 @@
     <!-- Fixed Bottom App Navigation -->
     <nav class="bottom-nav" aria-label="Bottom Navigation">
       <div class="bottom-nav-inner" id="bottomNavContainer">
-        <a href="index.html" class="bottom-nav-item active"> <!-- (or active depending on page) -->
+        <a href="index.html" class="bottom-nav-item active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
           Scan
         </a>
@@ -789,12 +1008,97 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
           Map
         </a>
+        <button
+          type="button"
+          id="predNavBtn"
+          class="bottom-nav-item mgr"
+          data-tab="predictive"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><polyline points="4 15 9 10 13 14 20 5"/></svg>
+          Insights
+        </button>
+        <button
+          type="button"
+          id="procNavBtn"
+          class="bottom-nav-item mgr"
+          data-tab="procurement"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Orders
+        </button>
         <!-- Manager link is injected dynamically via JS if authorized -->
       </div>
     </nav>
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="/src/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/src/predictive.js"></script>
+    <script src="/src/procurement.js"></script>
+    <script>
+      (function () {
+        const scanLink = document.querySelector('.bottom-nav a[href="index.html"]');
+        const items = [
+          { name: "predictive", panel: document.getElementById("tab-predictive"), button: document.getElementById("predNavBtn") },
+          { name: "procurement", panel: document.getElementById("tab-procurement"), button: document.getElementById("procNavBtn") },
+        ].filter((item) => item.panel && item.button);
+
+        function clearHash() {
+          if (location.hash === "#predictive" || location.hash === "#procurement") {
+            history.replaceState(null, "", location.pathname + location.search);
+          }
+        }
+
+        function open(item) {
+          for (const other of items) {
+            const active = other === item;
+            other.panel.hidden = !active;
+            other.button.classList.toggle("active", active);
+          }
+          if (scanLink) scanLink.classList.remove("active");
+          if (typeof window.showTab === "function") window.showTab(item.name);
+        }
+
+        function closeAll() {
+          for (const item of items) {
+            item.panel.hidden = true;
+            item.button.classList.remove("active");
+          }
+          if (scanLink) scanLink.classList.add("active");
+          if (typeof window.showTab === "function") window.showTab("scan");
+          clearHash();
+        }
+
+        for (const item of items) {
+          item.button.addEventListener("click", () => {
+            if (item.panel.hidden) {
+              open(item);
+              if (item.name === "procurement" && typeof window.loadProcurement === "function") {
+                window.loadProcurement();
+              }
+            } else {
+              closeAll();
+            }
+          });
+        }
+
+        // Other pages link here with #predictive or #procurement, since this is
+        // the only page that hosts the manager dashboards.
+        const hash = location.hash.replace("#", "");
+        if (hash === "predictive" || hash === "procurement") {
+          fetch("/api/me", { headers: { "Content-Type": "application/json" } })
+            .then((res) => res.json())
+            .then((me) => {
+              clearHash();
+              if (me && me.role === "manager") {
+                const item = items.find((entry) => entry.name === hash);
+                if (item) item.button.click();
+              }
+            })
+            .catch(() => {});
+        }
+      })();
+    </script>
     <script>
       (async function checkManagerAccess() {
         try {
@@ -805,7 +1109,7 @@
             const navContainer = document.getElementById("bottomNavContainer");
             if (navContainer) {
               const isManagerPage = window.location.pathname.includes("manager.html");
-              
+
               const managerLink = document.createElement("a");
               managerLink.href = "manager.html";
               managerLink.className = `bottom-nav-item ${isManagerPage ? "active" : ""}`;

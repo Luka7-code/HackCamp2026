@@ -1,2 +1,10 @@
 .env
 node_modules
+
+# Predictive ML datasets and generated artifacts
+ml/data/raw/
+ml/data/processed/
+ml/artifacts/models/
+ml/.venv/
+__pycache__/
+*.pyc
