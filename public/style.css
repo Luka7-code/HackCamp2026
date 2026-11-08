@@ -4,6 +4,10 @@
 [hidden] {
   display: none !important;
 }
+/* The always-on scanner overlay belongs to the Scan view only. */
+body:has(.tab:not([hidden])) #reader {
+  display: none;
+}
 body {
   margin: 0;
   font-family: system-ui, sans-serif;

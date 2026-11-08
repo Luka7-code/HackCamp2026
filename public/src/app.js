@@ -5,6 +5,7 @@ let scanner = null;
 let lastCode = "";
 let lastTime = 0;
 let currentRole = "worker";
+console.log("app.js loaded");
 
 // ---------- API helper: sends role + employee on every request ----------
 async function api(path, options = {}) {
@@ -19,6 +20,7 @@ async function api(path, options = {}) {
 
 function toast(msg, isError = false) {
   const t = $("toast");
+  if (!t) return console.warn(msg);
   t.textContent = msg;
   t.className = "show" + (isError ? " error" : "");
   setTimeout(() => (t.className = ""), 2800);
@@ -29,7 +31,6 @@ function applyRole() {
   document.body.className = currentRole;
 }
 function showTab(name) {
-  if (name !== "scan") stopCamera(); // don't leave the iPhone camera running in the background
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((s) => (s.hidden = s.id !== "tab-" + name));
   if (name === "items") loadItems();
@@ -40,16 +41,19 @@ document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("cli
 // ---------- Map ----------
 async function loadMap() {
   locations = await api("/api/locations");
-  const cols = Math.max(...locations.map((l) => Number(l.map_col)));
   const map = $("map");
-  map.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-  map.innerHTML = locations
-    .map((l) => `<div class="cell" data-location="${l.location_code}" title="${l.label}">${l.location_code}</div>`)
-    .join("");
-  map
-    .querySelectorAll(".cell")
-    .forEach((c) => c.addEventListener("click", () => handleCode("LOC-" + c.dataset.location)));
-  $("newLoc").innerHTML = locations.map((l) => `<option value="${l.location_code}">${l.label}</option>`).join("");
+  if (map) {
+    const cols = Math.max(...locations.map((l) => Number(l.map_col)));
+    map.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    map.innerHTML = locations
+      .map((l) => `<div class="cell" data-location="${l.location_code}" title="${l.label}">${l.location_code}</div>`)
+      .join("");
+    map
+      .querySelectorAll(".cell")
+      .forEach((c) => c.addEventListener("click", () => handleCode("LOC-" + c.dataset.location)));
+  }
+  const newLoc = $("newLoc");
+  if (newLoc) newLoc.innerHTML = locations.map((l) => `<option value="${l.location_code}">${l.label}</option>`).join("");
 }
 function highlight(code) {
   document.querySelectorAll(".cell").forEach((c) => c.classList.toggle("active", c.dataset.location === code));
@@ -59,23 +63,35 @@ function highlight(code) {
 async function handleCode(raw) {
   const code = raw.trim();
   if (!code) return;
+
   // Ignore the same code firing repeatedly while the camera is held on it
   const now = Date.now();
   if (code === lastCode && now - lastTime < 3000) return;
   lastCode = code;
   lastTime = now;
 
+  console.log("📷 Barcode detected:", code);
+
   try {
     if (code.startsWith("LOC-")) {
       const data = await api("/api/shelf/" + encodeURIComponent(code));
+      console.log("✅ Shelf found:", data.location.label, data);
       highlight(data.location.location_code);
       showShelf(data);
     } else {
       const item = await api("/api/scan/" + encodeURIComponent(code));
+      console.log("✅ Item found:", item.name, item);
+      console.table({
+        name: item.name,
+        sku: item.sku_id,
+        status: item.status,
+        location: item.label || "Not on a shelf",
+      });
       highlight(item.location_code);
       showItem(item);
     }
   } catch (err) {
+    console.error("❌ Not found / error for", code, "→", err.message);
     toast(err.message, true);
   }
 }
@@ -130,121 +146,50 @@ async function setStatus(barcode, status, location) {
   }
 }
 
-// ---------- Camera ----------
-const HTTPS_HINT =
-  "Camera needs HTTPS on a phone. Open this app over https:// (for example a cloudflared or ngrok tunnel) instead of a plain http:// address.";
+// ---------- Scanner (always on) ----------
+let scanning = false;
 
-let startingCamera = false;
-
-// iOS Safari only exposes getUserMedia in a secure context, so check before
-// touching the library and explain the fix instead of failing cryptically.
-function cameraBlockedReason() {
-  if (!window.isSecureContext) return HTTPS_HINT;
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return HTTPS_HINT;
-  return "";
-}
-
-function describeCameraError(err) {
-  switch (err && (err.name || err.code)) {
-    case "NotAllowedError":
-    case "PermissionDeniedError":
-      return "Camera permission denied. On iPhone: Settings > Safari > Camera > Allow, then reload.";
-    case "NotFoundError":
-    case "DevicesNotFoundError":
-      return "No camera found on this device.";
-    case "NotReadableError":
-    case "TrackStartError":
-      return "The camera is already in use by another app. Close it and try again.";
-    case "OverconstrainedError":
-      return "No rear camera available on this device.";
-    default:
-      return "Camera error: " + (err && err.message ? err.message : String(err));
-  }
-}
-
-// iOS pauses inline video unless these are set explicitly on the element
-function keepVideoInline() {
-  const video = document.querySelector("#reader video");
-  if (!video) return;
-  video.setAttribute("playsinline", "true");
-  video.setAttribute("webkit-playsinline", "true");
-  video.muted = true;
-}
-
-async function startCamera() {
-  if (startingCamera || scanner) return;
-
-  if (typeof Html5Qrcode === "undefined") {
-    toast("Scanner library failed to load. Check your connection and reload.", true);
-    return;
-  }
-
-  const blocked = cameraBlockedReason();
-  if (blocked) {
-    toast(blocked, true);
-    return;
-  }
-
-  startingCamera = true;
-  $("startBtn").disabled = true;
+async function startScanner() {
+  if (scanning) return;
   try {
-    const config = { fps: 10, qrbox: { width: 320, height: 120 } };
-    let lastError = null;
-
-    // Prefer the rear camera, but fall back to whatever camera exists
-    for (const camera of [{ facingMode: "environment" }, { facingMode: "user" }]) {
-      const instance = new Html5Qrcode("reader", {
-        formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      });
-      try {
-        await instance.start(camera, config, handleCode);
-        scanner = instance;
-        keepVideoInline();
-        return;
-      } catch (err) {
-        lastError = err;
-        try {
-          await instance.clear();
-        } catch {
-          /* nothing to clean up */
-        }
-        if ((err && err.name) !== "OverconstrainedError") break;
-      }
+    if (typeof Html5Qrcode === "undefined") {
+      throw new Error("Scanner library not loaded");
     }
-    throw lastError;
+    const cameras = await Html5Qrcode.getCameras();
+    console.log("Cameras:", cameras);
+    if (!cameras.length) throw new Error("No camera found");
+
+    // Prefer a back camera; otherwise the MacBook's built-in camera
+    const cam =
+      cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
+      cameras.find((c) => /macbook pro camera/i.test(c.label)) ||
+      cameras[0];
+    console.log("Using camera:", cam.label);
+
+    scanner = new Html5Qrcode("reader", {
+      formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128],
+      useBarCodeDetectorIfSupported: true,
+      verbose: false,
+    });
+    await scanner.start(
+      cam.id,
+      { fps: 20, qrbox: { width: 450, height: 160 } },
+      (text) => {
+        console.log("📷 Raw scan:", text);
+        handleCode(text);
+      },
+      () => {},
+    );
+    scanning = true;
+    console.log("Scanner started");
   } catch (err) {
-    toast(describeCameraError(err), true);
-  } finally {
-    startingCamera = false;
-    $("startBtn").disabled = !!scanner;
-    $("stopBtn").disabled = !scanner;
+    console.error(err);
+    toast("Camera error: " + (err.message || err), true);
+    scanning = false;
+    setTimeout(startScanner, 5000);
   }
 }
-
-async function stopCamera() {
-  if (!scanner) return;
-  const instance = scanner;
-  scanner = null;
-  try {
-    await instance.stop();
-  } catch {
-    /* already stopped */
-  }
-  try {
-    await instance.clear();
-  } catch {
-    /* nothing to clean up */
-  }
-  $("startBtn").disabled = false;
-  $("stopBtn").disabled = true;
-}
-
-$("startBtn").addEventListener("click", startCamera);
-$("stopBtn").addEventListener("click", stopCamera);
-$("manualBtn").addEventListener("click", () => handleCode($("manual").value));
-$("manual").addEventListener("keydown", (e) => e.key === "Enter" && handleCode($("manual").value));
-
+startScanner();
 // ---------- Items tab ----------
 async function loadItems() {
   items = await api("/api/items");
