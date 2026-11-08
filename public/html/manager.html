@@ -2,307 +2,677 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WMS Manager Dashboard</title>
-    <!-- Include html5-qrcode scanner library -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manager Dashboard · LakeStock</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpolygon points='32,4 60,19 32,34 4,19' fill='%23f97316'/%3E%3Cpolygon points='4,19 32,34 32,60 4,45' fill='%230b0f14'/%3E%3Cpolygon points='60,19 60,45 32,60 32,34' fill='%231c2430'/%3E%3Cpath d='M10 24 L17 27.7 V38 L26 42.8 V48 L10 39.4 Z' fill='%2338bdf8'/%3E%3C/svg%3E"
+    />
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
       :root {
-        --bg: #0b1220;
-        --panel: #121b2e;
-        --panel2: #18233a;
-        --line: #26334d;
-        --text: #e6ecf8;
-        --muted: #8b97b0;
-        --accent: #f5a623;
-        --teal: #14b8a6;
-        --blue: #3b82f6;
+        --sky: #38bdf8;
         --green: #22c55e;
+        --orange: #f97316;
+        --ink: #0b0f14;
+        --ink-soft: #1c2430;
+        --body: #334155;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --page: #f6f9fc;
+        --panel2: #f1f5f9;
+        --accent: var(--sky);
+        --blue: #3b82f6;
         --red: #ef4444;
       }
-      *,
-      *::before,
-      *::after {
+
+      * {
         box-sizing: border-box;
       }
+
       html,
       body {
-        height: 100%;
         margin: 0;
-        overflow-x: hidden;
-        background: var(--bg);
-        color: var(--text);
-        font-family: system-ui, sans-serif;
       }
-      .container {
-        max-width: 1200px;
-        margin: 20px auto;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        padding: 24px;
-        border-radius: 16px;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        color: var(--body);
+        background-color: var(--page);
+        background-image: radial-gradient(
+          circle at 1px 1px,
+          rgba(15, 23, 42, 0.055) 1px,
+          transparent 0
+        );
+        background-size: 22px 22px;
+        -webkit-font-smoothing: antialiased;
       }
-      .back-link {
-        display: inline-block;
-        margin-bottom: 16px;
-        color: var(--teal);
+
+      /* ---------------- Top navbar ---------------- */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--ink);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 12px 30px -22px rgba(2, 6, 23, 0.9);
+      }
+
+      .topbar-inner {
+        max-width: 1280px;
+        margin: 0 auto;
+        min-height: 68px;
+        padding: 0 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        flex: none;
         text-decoration: none;
+        color: #fff;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        display: block;
+        filter: drop-shadow(0 3px 8px rgba(56, 189, 248, 0.28));
+      }
+
+      .brand-name {
+        font-size: 1.3rem;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .brand-name .lake {
+        color: var(--sky);
+      }
+      .brand-name .stock {
+        color: var(--green);
+      }
+      .brand-name .dot {
+        color: var(--orange);
+      }
+
+      .brand-divider {
+        width: 1px;
+        height: 26px;
+        flex: none;
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      .crumb {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.85rem;
+        letter-spacing: 0.01em;
+        color: rgba(255, 255, 255, 0.52);
+      }
+
+      .crumb strong {
+        color: #fff;
         font-weight: 600;
       }
-      .back-link:hover {
-        text-decoration: underline;
+
+      .topbar-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 16px;
       }
+
+      .who {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: color 0.15s ease, background 0.15s ease;
+        padding: 6px 10px;
+        border-radius: 6px;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      /* ---------------- Page Shell ---------------- */
+      .shell {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 30px 24px 100px; /* extra bottom padding for fixed nav */
+      }
+
+      /* Hero / Header Section */
+      .page-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 26px 34px;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f3faff 55%,
+          #f1fdf5 100%
+        );
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+          0 20px 40px -36px rgba(15, 23, 42, 0.5);
+        margin-bottom: 24px;
+      }
+
+      .hero-copy {
+        flex: 1 1 320px;
+        min-width: 0;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: var(--orange);
+      }
+
       h1 {
-        margin-top: 0;
-        font-size: 1.75rem;
-        letter-spacing: 0.02em;
+        margin: 0;
+        font-size: clamp(1.8rem, 1.2rem + 1.7vw, 2.45rem);
+        line-height: 1.08;
+        letter-spacing: -0.035em;
+        color: var(--ink);
       }
-      nav {
+
+      .lede {
+        margin: 11px 0 0;
+        max-width: 58ch;
+        font-size: 0.94rem;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      /* Dashboard Card Container */
+      .dash-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+
+      /* In-page Tab Navigation */
+      .tab-nav {
         display: flex;
         gap: 8px;
         margin-bottom: 24px;
         border-bottom: 1px solid var(--line);
         padding-bottom: 12px;
       }
-      nav button {
+
+      .tab-nav button {
         background: var(--panel2);
         border: 1px solid var(--line);
         color: var(--muted);
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 600;
         cursor: pointer;
         padding: 10px 18px;
-        border-radius: 8px;
-        transition: all 0.2s;
+        border-radius: 10px;
+        transition: all 0.15s ease;
       }
-      nav button.active {
-        background: var(--teal);
-        color: #04201c;
-        border-color: var(--teal);
+
+      .tab-nav button.active {
+        background: var(--sky);
+        color: #0c4a6e;
+        border-color: var(--sky);
       }
+
       .tab-content {
         display: none;
       }
+
       .tab-content.active {
         display: block;
       }
+
+      .tab-content h2 {
+        margin-top: 0;
+        font-size: 1.14rem;
+        color: var(--ink);
+        margin-bottom: 16px;
+      }
+
+      /* Tables */
+      .table-wrapper {
+        overflow-x: auto;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 12px;
         font-size: 0.9rem;
       }
+
       th,
       td {
         border: 1px solid var(--line);
         padding: 12px;
         text-align: left;
       }
+
       th {
         background: var(--panel2);
         color: var(--muted);
         text-transform: uppercase;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         letter-spacing: 0.05em;
       }
+
       td {
-        background: var(--panel);
+        background: #fff;
+        color: var(--body);
       }
+
+      /* Forms */
       form {
         display: grid;
         gap: 16px;
         max-width: 600px;
       }
+
       label {
         display: flex;
         flex-direction: column;
-        font-weight: 500;
+        font-weight: 600;
         font-size: 0.85rem;
         color: var(--muted);
         gap: 6px;
       }
+
       .barcode-group {
         display: flex;
         gap: 8px;
       }
+
       .barcode-group input {
         flex: 1;
       }
+
       input,
       textarea,
       select {
         font: inherit;
         padding: 10px 14px;
-        border-radius: 8px;
-        background: var(--panel2);
-        color: var(--text);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--ink);
         border: 1px solid var(--line);
         outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
       }
+
       input:focus,
       textarea:focus,
       select:focus {
-        border-color: var(--teal);
+        border-color: var(--sky);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
       }
+
       button.submit-btn,
       button.scan-btn {
-        background: var(--teal);
-        color: #04201c;
+        background: var(--sky);
+        color: #0c4a6e;
         border: none;
-        border-radius: 8px;
-        padding: 10px 16px;
+        border-radius: 10px;
+        padding: 10px 18px;
         font-weight: 700;
         cursor: pointer;
         font-size: 0.95rem;
-        transition: opacity 0.2s;
+        transition: filter 0.15s ease;
       }
+
       button.scan-btn {
-        background: var(--blue);
+        background: var(--ink-soft);
         color: #fff;
       }
+
       button.submit-btn:hover,
       button.scan-btn:hover {
-        opacity: 0.9;
+        filter: brightness(1.05);
       }
+
       .pill {
         display: inline-block;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 0.72rem;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
         font-weight: 700;
-        border: 1px solid currentColor;
-        white-space: nowrap;
+        text-transform: uppercase;
       }
-      .pill.STOWED {
-        color: var(--accent);
-        background: rgba(245, 166, 35, 0.12);
-      }
-      .pill.IN_TRANSIT {
-        color: var(--blue);
-        background: rgba(59, 130, 246, 0.12);
-      }
-      .pill.DISPATCHED {
-        color: var(--green);
-        background: rgba(34, 197, 94, 0.12);
-      }
-      /* Scanner Modal Overlay */
+
+      .pill.STOWED { background: #dcfce7; color: #166534; }
+      .pill.IN_TRANSIT { background: #fef9c3; color: #854d0e; }
+      .pill.DISPATCHED { background: #fee2e2; color: #991b1b; }
+
+      /* Camera Scanner Modal Overlay */
       #scanner-modal {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(11, 15, 20, 0.85);
         z-index: 1000;
         justify-content: center;
         align-items: center;
         flex-direction: column;
       }
+
       #scanner-container {
         width: 100%;
         max-width: 400px;
         background: #000;
-        border-radius: 12px;
+        border-radius: 14px;
         overflow: hidden;
         border: 1px solid var(--line);
       }
+
       .close-scanner {
         margin-top: 16px;
         background: var(--red);
         color: #fff;
         border: none;
         padding: 10px 20px;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
         cursor: pointer;
+      }
+
+      /* ---------------- Fixed Bottom Navigation Bar ---------------- */
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: var(--ink);
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        box-shadow: 0 -10px 30px -15px rgba(2, 6, 23, 0.8);
+        z-index: 40;
+        padding: 10px 16px;
+      }
+
+      .bottom-nav-inner {
+        max-width: 480px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-around;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .bottom-nav-item {
+        display: flex;
+        flex: 1 1 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        gap: 4px;
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-align: center;
+        padding: 6px 4px;
+        border-radius: 10px;
+        transition: color 0.15s ease, background 0.15s ease;
+      }
+
+      .bottom-nav-item svg {
+        width: 20px;
+        height: 20px;
+        flex: none;
+      }
+
+      /* Panel toggles are buttons; keep them identical to the link items. */
+      button.bottom-nav-item {
+        background: none;
+        border: 0;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .bottom-nav-item:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .bottom-nav-item.active {
+        color: var(--sky);
+        background: rgba(56, 189, 248, 0.1);
+      }
+
+      .bottom-nav-item.active svg {
+        stroke: var(--sky);
+      }
+
+      /* Footer */
+      .foot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 46px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .foot .brand-name {
+        font-size: 0.9rem;
+      }
+
+      .foot-mark {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
+
+      .foot span:last-child {
+        margin-left: auto;
+      }
+
+      @media (max-width: 720px) {
+        .topbar-inner {
+          padding: 11px 16px;
+          flex-wrap: wrap;
+        }
+        .brand-divider, .crumb {
+          display: none;
+        }
+        .bottom-nav-inner {
+          gap: 4px;
+        }
+        .bottom-nav-item {
+          font-size: 0.68rem;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <a href="/" class="back-link">← Back to Warehouse Scanner</a>
-      <h1>Manager Dashboard</h1>
+    <!-- Logo mark symbol -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="logo-mark" viewBox="0 0 64 64">
+        <polygon points="32,4 60,19 32,34 4,19" fill="#f97316" />
+        <polygon points="4,19 32,34 32,60 4,45" fill="#0b0f14" />
+        <polygon points="60,19 60,45 32,60 32,34" fill="#1c2430" />
+        <g transform="matrix(1,0.5357,0,1,4,19)">
+          <path d="M6 6 H13 V19 H23 V25 H6 Z" fill="#38bdf8" />
+        </g>
+      </symbol>
+    </svg>
 
-      <nav>
-        <button class="active" onclick="switchTab('inventory')">Inventory Table</button>
-        <button onclick="switchTab('register')">Add New Item</button>
-        <button onclick="switchTab('audit')">Audit Logs</button>
-      </nav>
+    <!-- Top Navigation Bar -->
+    <nav class="topbar" aria-label="Main">
+      <div class="topbar-inner">
+        <a class="brand" href="index.html" aria-label="LakeStock home">
+          <svg class="brand-mark" aria-hidden="true">
+            <use href="#logo-mark" />
+          </svg>
+          <span class="brand-name"
+            ><span class="lake">Lake</span><span class="stock">Stock</span
+            ><span class="dot">.</span></span
+          >
+        </a>
 
-      <!-- TAB 1: INVENTORY TABLE -->
-      <div id="inventory" class="tab-content active">
-        <h2>Warehouse Inventory</h2>
-        <table id="inventory-table">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Barcode</th>
-              <th>Name</th>
-              <th>In Transit</th>
-              <th>Stowed Locations</th>
-              <th>Total Stowed</th>
-              <th>Dispatched</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <span class="brand-divider" aria-hidden="true"></span>
+
+        <span class="crumb">Warehouse <strong>Manager</strong></span>
+
+        <div class="topbar-actions">
+          <span id="whoami" class="who"></span>
+          <a href="/logout" class="nav-link" style="color: #fca5a5;">Log out</a>
+        </div>
       </div>
+    </nav>
 
-      <!-- TAB 2: REGISTER ITEM -->
-      <div id="register" class="tab-content">
-        <h2>Register New Item</h2>
-        <form id="register-form" onsubmit="registerItem(event)">
-          <label
-            >Item Name
-            <input type="text" id="reg-name" required placeholder="e.g. Ergonomic Keyboard" />
-          </label>
-          <label
-            >Custom Barcode (Optional — scan or leave blank to auto-generate)
-            <div class="barcode-group">
-              <input type="text" id="reg-barcode" placeholder="e.g. BARCODE-998877" />
-              <button type="button" class="scan-btn" onclick="startBarcodeScanner()">📷 Scan</button>
-            </div>
-          </label>
-          <label
-            >Description
-            <textarea id="reg-desc" placeholder="Item description..." rows="3"></textarea>
-          </label>
-          <label
-            >Initial Quantity
-            <input type="number" id="reg-qty" min="0" value="0" required />
-          </label>
-          <label
-            >Initial Shelf Location
-            <select id="reg-location" required></select>
-          </label>
-          <label
-            >Image URL (Optional)
-            <input type="url" id="reg-image" placeholder="https://..." />
-          </label>
-          <button type="submit" class="submit-btn">Register Item</button>
-        </form>
-      </div>
+    <main class="shell">
+      <section class="page-head">
+        <div class="hero-copy">
+          <p class="eyebrow">Warehouse · Administration</p>
+          <h1>Manager dashboard</h1>
+          <p class="lede">
+            Oversee global inventory levels, register new stock items, and audit system-wide employee action logs.
+          </p>
+        </div>
+      </section>
 
-      <!-- TAB 3: AUDIT LOGS -->
-      <div id="audit" class="tab-content">
-        <h2>Audit Trail</h2>
-        <table id="audit-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Employee</th>
-              <th>Role</th>
-              <th>SKU</th>
-              <th>Item Name</th>
-              <th>Action</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Qty</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+      <section class="dash-card">
+        <nav class="tab-nav">
+          <button class="active" onclick="switchTab('inventory')">Inventory Table</button>
+          <button onclick="switchTab('register')">Add New Item</button>
+          <button onclick="switchTab('audit')">Audit Logs</button>
+        </nav>
+
+        <!-- TAB 1: INVENTORY TABLE -->
+        <div id="inventory" class="tab-content active">
+          <h2>Warehouse Inventory</h2>
+          <div class="table-wrapper">
+            <table id="inventory-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Barcode</th>
+                  <th>Name</th>
+                  <th>In Transit</th>
+                  <th>Stowed Locations</th>
+                  <th>Total Stowed</th>
+                  <th>Dispatched</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: REGISTER ITEM -->
+        <div id="register" class="tab-content">
+          <h2>Register New Item</h2>
+          <form id="register-form" onsubmit="registerItem(event)">
+            <label
+              >Item Name
+              <input type="text" id="reg-name" required placeholder="e.g. Ergonomic Keyboard" />
+            </label>
+            <label
+              >Custom Barcode (Optional — scan or leave blank to auto-generate)
+              <div class="barcode-group">
+                <input type="text" id="reg-barcode" placeholder="e.g. BARCODE-998877" />
+                <button type="button" class="scan-btn" onclick="startBarcodeScanner()">📷 Scan</button>
+              </div>
+            </label>
+            <label
+              >Description
+              <textarea id="reg-desc" placeholder="Item description..." rows="3"></textarea>
+            </label>
+            <label
+              >Initial Quantity
+              <input type="number" id="reg-qty" min="0" value="0" required />
+            </label>
+            <label
+              >Initial Shelf Location
+              <select id="reg-location" required></select>
+            </label>
+            <label
+              >Image URL (Optional)
+              <input type="url" id="reg-image" placeholder="https://..." />
+            </label>
+            <button type="submit" class="submit-btn">Register Item</button>
+          </form>
+        </div>
+
+        <!-- TAB 3: AUDIT LOGS -->
+        <div id="audit" class="tab-content">
+          <h2>Audit Trail</h2>
+          <div class="table-wrapper">
+            <table id="audit-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Employee</th>
+                  <th>Role</th>
+                  <th>SKU</th>
+                  <th>Item Name</th>
+                  <th>Action</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Qty</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <svg class="foot-mark" aria-hidden="true"><use href="#logo-mark" /></svg>
+        <span class="brand-name"
+          ><span class="lake">Lake</span><span class="stock">Stock</span
+          ><span class="dot">.</span></span
+        >
+        <span>Warehouse management · Manager Portal</span>
+      </footer>
+    </main>
 
     <!-- Camera Scanner Modal -->
     <div id="scanner-modal">
@@ -310,12 +680,50 @@
       <button class="close-scanner" onclick="stopBarcodeScanner()">Cancel Scanning</button>
     </div>
 
+    <!-- Fixed Bottom App Navigation Bar -->
+    <nav class="bottom-nav" aria-label="Bottom Navigation">
+      <div class="bottom-nav-inner" id="bottomNavContainer">
+        <a href="index.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          Scan
+        </a>
+        <a href="labels.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print
+        </a>
+        <a href="map.html" class="bottom-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+          Map
+        </a>
+        <!-- Manager link is injected dynamically via JS if authorized -->
+        <a href="index.html#predictive" class="bottom-nav-item mgr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="21" x2="21" y2="21"/><polyline points="4 15 9 10 13 14 20 5"/></svg>
+          Insights
+        </a>
+        <a href="index.html#procurement" class="bottom-nav-item mgr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          Orders
+        </a>
+      </div>
+    </nav>
+
     <script>
       let html5QrCode = null;
 
+      async function initUser() {
+        try {
+          const res = await fetch("/api/me");
+          const me = await res.json();
+          if (res.ok && me.email && document.getElementById("whoami")) {
+            document.getElementById("whoami").textContent = `${me.email} (${me.role})`;
+          }
+        } catch (e) {}
+      }
+      initUser();
+
       function switchTab(tabId) {
         document.querySelectorAll(".tab-content").forEach((el) => el.classList.remove("active"));
-        document.querySelectorAll("nav button").forEach((el) => el.classList.remove("active"));
+        document.querySelectorAll(".tab-nav button").forEach((el) => el.classList.remove("active"));
         document.getElementById(tabId).classList.add("active");
         event.target.classList.add("active");
 
@@ -336,7 +744,7 @@
           <td><b>${i.barcode}</b></td>
           <td>${i.name}</td>
           <td>${i.qty_in_transit || 0}</td>
-          <td>${i.locations.map((l) => `${l.label} (${l.qty_stowed})`).join(", ") || "None"}</td>
+          <td>${i.locations?.map((l) => `${l.label} (${l.qty_stowed})`).join(", ") || "None"}</td>
           <td><b>${i.qty_stowed || 0}</b></td>
           <td>${i.qty_dispatched || 0}</td>
         </tr>
@@ -367,9 +775,7 @@
               document.getElementById("reg-barcode").value = decodedText;
               stopBarcodeScanner();
             },
-            (errorMessage) => {
-              // scanning continuously in progress
-            },
+            (errorMessage) => {},
           )
           .catch((err) => {
             alert("Unable to start camera scanner: " + err);
@@ -433,25 +839,25 @@
 
           const logs = await res.json();
           if (!logs.length) {
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--muted);">No audit records found yet. Perform some warehouse actions (scan, stow, dispatch) to populate logs.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--muted);">No audit records found yet. Perform some warehouse actions to populate logs.</td></tr>`;
             return;
           }
 
           tbody.innerHTML = logs
             .map(
               (a) => `
-      <tr>
-        <td>${a.event_time ? new Date(a.event_time).toLocaleString() : "-"}</td>
-        <td>${a.employee_id || "unknown"}</td>
-        <td><span class="pill ${a.role}">${a.role || "worker"}</span></td>
-        <td><b>${a.sku_id || "-"}</b></td>
-        <td>${a.item_name || "N/A"}</td>
-        <td><b>${a.action_type || "INFO"}</b></td>
-        <td>${a.from_label || a.from_location || "-"}</td>
-        <td>${a.to_location ? a.to_label || a.to_location : "-"}</td>
-        <td>${a.quantity === -1 || a.quantity === null ? "-" : a.quantity}</td>
-      </tr>
-    `,
+        <tr>
+          <td>${a.event_time ? new Date(a.event_time).toLocaleString() : "-"}</td>
+          <td>${a.employee_id || "unknown"}</td>
+          <td><span class="pill ${a.role}">${a.role || "worker"}</span></td>
+          <td><b>${a.sku_id || "-"}</b></td>
+          <td>${a.item_name || "N/A"}</td>
+          <td><b>${a.action_type || "INFO"}</b></td>
+          <td>${a.from_label || a.from_location || "-"}</td>
+          <td>${a.to_location ? a.to_label || a.to_location : "-"}</td>
+          <td>${a.quantity === -1 || a.quantity === null ? "-" : a.quantity}</td>
+        </tr>
+      `,
             )
             .join("");
         } catch (err) {
@@ -461,6 +867,37 @@
       }
 
       loadInventory();
+    </script>
+    <script>
+      (async function checkManagerAccess() {
+        try {
+          const res = await fetch("/api/me");
+          const me = await res.json();
+
+          if (me.role === "manager") {
+            const navContainer = document.getElementById("bottomNavContainer");
+            if (navContainer) {
+              const isManagerPage = window.location.pathname.includes("manager.html");
+
+              const managerLink = document.createElement("a");
+              managerLink.href = "manager.html";
+              managerLink.className = `bottom-nav-item ${isManagerPage ? "active" : ""}`;
+              managerLink.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Manager
+              `;
+              navContainer.appendChild(managerLink);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to verify user role:", err);
+        }
+      })();
     </script>
   </body>
 </html>

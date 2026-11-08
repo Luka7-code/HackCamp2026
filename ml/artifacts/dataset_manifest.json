@@ -1,0 +1,50 @@
+{
+  "downloaded_at": "2026-11-08T03:24:57.852988+00:00",
+  "files": [
+    {
+      "path": "ml/data/raw/freshretailnet/freshretailnet_50k_train.tsfile",
+      "url": "https://huggingface.co/datasets/THULab/freshretailnet_50k/resolve/main/freshretailnet_50k_train.tsfile",
+      "dataset": "freshretailnet",
+      "license": "CC BY 4.0",
+      "official_source": "https://huggingface.co/datasets/THULab/freshretailnet_50k",
+      "bytes": 657947093,
+      "sha256": "d5edd1706c1442360dac1d6ae5c5d7781faf76079a7439fa7b6ed6b6c62e1cad"
+    },
+    {
+      "path": "ml/data/raw/freshretailnet/freshretailnet_50k_eval.tsfile",
+      "url": "https://huggingface.co/datasets/THULab/freshretailnet_50k/resolve/main/freshretailnet_50k_eval.tsfile",
+      "dataset": "freshretailnet",
+      "license": "CC BY 4.0",
+      "official_source": "https://huggingface.co/datasets/THULab/freshretailnet_50k",
+      "bytes": 354639498,
+      "sha256": "d3ccf647009bf6a7c5598ceab58c70895e17c71ae113a95eede677665f925c00"
+    },
+    {
+      "path": "ml/data/raw/m5/calendar.csv",
+      "url": "https://huggingface.co/datasets/denephew/M5_Forecasting/resolve/main/calendar.csv",
+      "dataset": "m5",
+      "license": "Kaggle competition terms",
+      "official_source": "https://www.kaggle.com/competitions/m5-forecasting-accuracy/data",
+      "bytes": 103469,
+      "sha256": "d12b5914ef03e66649adf5dd9e996e6602251c22b7a6af8f1f7e3aa12f8860f5"
+    },
+    {
+      "path": "ml/data/raw/m5/sales_train_evaluation.csv",
+      "url": "https://huggingface.co/datasets/denephew/M5_Forecasting/resolve/main/sales_train_evaluation.csv",
+      "dataset": "m5",
+      "license": "Kaggle competition terms",
+      "official_source": "https://www.kaggle.com/competitions/m5-forecasting-accuracy/data",
+      "bytes": 121736518,
+      "sha256": "4b4a47c44c38380d2a9168216fea8c9ff2f31b1ddb772f8a0995952a038b8aa0"
+    },
+    {
+      "path": "ml/data/raw/m5/sell_prices.csv",
+      "url": "https://huggingface.co/datasets/denephew/M5_Forecasting/resolve/main/sell_prices.csv",
+      "dataset": "m5",
+      "license": "Kaggle competition terms",
+      "official_source": "https://www.kaggle.com/competitions/m5-forecasting-accuracy/data",
+      "bytes": 203395785,
+      "sha256": "9da3ad1f8b8ccacdbdc70612191dd375ec24a4ac6625c24b75b3bc60b0bed2ef"
+    }
+  ]
+}

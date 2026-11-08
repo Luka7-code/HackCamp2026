@@ -161,6 +161,13 @@ const validImage = (s) =>
     s.length < 300000 &&
     (/^data:image\/(jpeg|png|webp);base64,/.test(s) || /^https:\/\//.test(s)));
 
+// ---------- Predictive AI (new module; existing routes untouched) ----------
+const { createPredictiveRouter } = require("./lib/predictive/routes");
+app.use("/api/predictive", createPredictiveRouter({ query, managerOnly }));
+
+// ---------- Procurement (manager-only; restock recommendations -> purchase orders) ----------
+const { createProcurementRouter } = require("./lib/procurement/routes");
+app.use("/api/procurement", createProcurementRouter({ query, managerOnly }));
 // ---------- Audit log (append-only: INSERT only) ----------
 function logEvent(req, sku, action, fromLoc, toLoc, qty) {
   return query(

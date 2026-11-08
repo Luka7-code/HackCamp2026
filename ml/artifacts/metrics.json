@@ -1,0 +1,317 @@
+{
+  "generated_at": "2026-11-08T03:37:39.089028+00:00",
+  "horizons": [
+    7,
+    14,
+    30
+  ],
+  "datasets": {
+    "freshretailnet": {
+      "dataset_id": "freshretailnet",
+      "trained_at": "2026-11-08T03:37:18.133851+00:00",
+      "model": {
+        "name": "xgboost",
+        "type": "pooled normalized-demand regressor",
+        "params": {
+          "n_estimators": 350,
+          "max_depth": 6,
+          "learning_rate": 0.07,
+          "subsample": 0.85,
+          "colsample_bytree": 0.85,
+          "min_child_weight": 5,
+          "reg_lambda": 1.0,
+          "objective": "reg:squarederror",
+          "eval_metric": "mae",
+          "tree_method": "hist",
+          "random_state": 42
+        },
+        "best_iteration": 44,
+        "artifact": "artifacts\\models\\xgb_freshretailnet_final.json"
+      },
+      "training": {
+        "series": 2000,
+        "rows": 180000,
+        "date_min": "2024-03-28",
+        "date_max": "2024-06-25"
+      },
+      "holdout": {
+        "moving_average": {
+          "7": {
+            "mae": 1.3563,
+            "wape": 0.1895,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 2.7778,
+            "wape": 0.2004,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 7.4562,
+            "wape": 0.2366,
+            "n_series": 2000
+          }
+        },
+        "seasonal_naive": {
+          "7": {
+            "mae": 1.3151,
+            "wape": 0.1838,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 2.7026,
+            "wape": 0.195,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 7.0685,
+            "wape": 0.2243,
+            "n_series": 2000
+          }
+        },
+        "xgboost": {
+          "7": {
+            "mae": 1.7196,
+            "wape": 0.2403,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 3.5227,
+            "wape": 0.2541,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 9.0163,
+            "wape": 0.2861,
+            "n_series": 2000
+          }
+        },
+        "series": 2000,
+        "history_days": 60,
+        "test_days": 30
+      },
+      "unseen_series": null,
+      "feature_importance": [
+        {
+          "feature": "is_weekend",
+          "importance": 0.174
+        },
+        {
+          "feature": "roll_mean_7",
+          "importance": 0.14066
+        },
+        {
+          "feature": "dow",
+          "importance": 0.12005
+        },
+        {
+          "feature": "roll_mean_14",
+          "importance": 0.10062
+        },
+        {
+          "feature": "promo",
+          "importance": 0.06448
+        },
+        {
+          "feature": "holiday",
+          "importance": 0.05855
+        },
+        {
+          "feature": "discount",
+          "importance": 0.05723
+        },
+        {
+          "feature": "weekofyear",
+          "importance": 0.04454
+        },
+        {
+          "feature": "lag_1",
+          "importance": 0.04205
+        },
+        {
+          "feature": "roll_std_7",
+          "importance": 0.0344
+        },
+        {
+          "feature": "series_scale_log",
+          "importance": 0.02617
+        },
+        {
+          "feature": "lag_7",
+          "importance": 0.0236
+        },
+        {
+          "feature": "day",
+          "importance": 0.02184
+        },
+        {
+          "feature": "month",
+          "importance": 0.02059
+        },
+        {
+          "feature": "lag_14",
+          "importance": 0.01864
+        }
+      ],
+      "elapsed_seconds": 12.2
+    },
+    "m5": {
+      "dataset_id": "m5",
+      "trained_at": "2026-11-08T03:37:39.003917+00:00",
+      "model": {
+        "name": "xgboost",
+        "type": "pooled normalized-demand regressor",
+        "params": {
+          "n_estimators": 350,
+          "max_depth": 6,
+          "learning_rate": 0.07,
+          "subsample": 0.85,
+          "colsample_bytree": 0.85,
+          "min_child_weight": 5,
+          "reg_lambda": 1.0,
+          "objective": "reg:squarederror",
+          "eval_metric": "mae",
+          "tree_method": "hist",
+          "random_state": 42
+        },
+        "best_iteration": 41,
+        "artifact": "artifacts\\models\\xgb_m5_final.json"
+      },
+      "training": {
+        "series": 2000,
+        "rows": 730000,
+        "date_min": "2015-05-24",
+        "date_max": "2016-05-22"
+      },
+      "holdout": {
+        "moving_average": {
+          "7": {
+            "mae": 3.6263,
+            "wape": 0.3964,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 6.6805,
+            "wape": 0.3484,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 13.807,
+            "wape": 0.3199,
+            "n_series": 2000
+          }
+        },
+        "seasonal_naive": {
+          "7": {
+            "mae": 3.629,
+            "wape": 0.3967,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 7.131,
+            "wape": 0.3719,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 15.682,
+            "wape": 0.3633,
+            "n_series": 2000
+          }
+        },
+        "xgboost": {
+          "7": {
+            "mae": 3.4816,
+            "wape": 0.3806,
+            "n_series": 2000
+          },
+          "14": {
+            "mae": 6.4133,
+            "wape": 0.3344,
+            "n_series": 2000
+          },
+          "30": {
+            "mae": 13.1248,
+            "wape": 0.3041,
+            "n_series": 2000
+          }
+        },
+        "series": 2000,
+        "history_days": 335,
+        "test_days": 30
+      },
+      "unseen_series": null,
+      "feature_importance": [
+        {
+          "feature": "roll_mean_14",
+          "importance": 0.16399
+        },
+        {
+          "feature": "roll_mean_28",
+          "importance": 0.10833
+        },
+        {
+          "feature": "day",
+          "importance": 0.10708
+        },
+        {
+          "feature": "dow",
+          "importance": 0.07713
+        },
+        {
+          "feature": "weekofyear",
+          "importance": 0.07536
+        },
+        {
+          "feature": "promo",
+          "importance": 0.06545
+        },
+        {
+          "feature": "is_weekend",
+          "importance": 0.05748
+        },
+        {
+          "feature": "month",
+          "importance": 0.05492
+        },
+        {
+          "feature": "price_rel",
+          "importance": 0.05203
+        },
+        {
+          "feature": "roll_mean_7",
+          "importance": 0.05119
+        },
+        {
+          "feature": "series_scale_log",
+          "importance": 0.04015
+        },
+        {
+          "feature": "lag_1",
+          "importance": 0.03278
+        },
+        {
+          "feature": "roll_std_7",
+          "importance": 0.03073
+        },
+        {
+          "feature": "lag_7",
+          "importance": 0.02953
+        },
+        {
+          "feature": "holiday",
+          "importance": 0.02374
+        }
+      ],
+      "elapsed_seconds": 20.9
+    }
+  },
+  "notes": [
+    "Metrics are computed on cumulative demand over 7, 14 and 30 days.",
+    "WAPE = sum(|predicted - actual|) / sum(actual).",
+    "XGBoost is trained per dataset; datasets are never combined.",
+    "FreshRetailNet sale_amount is globally normalized and stockout-censored.",
+    "M5 has no stockout labels, so no supervised stockout model is trained.",
+    "FreshRetailNet's separate eval release has only a 7-day horizon without history, so it is registered but not used for the 30-day holdout evaluation.",
+    "The best 30-day holdout model is selected separately per dataset for app forecasts."
+  ]
+}
